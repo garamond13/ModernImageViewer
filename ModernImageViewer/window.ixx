@@ -262,7 +262,7 @@ private:
             Microsoft::WRL::ComPtr<IFileOpenDialog> file_open_dialog;
             if (SUCCEEDED(CoCreateInstance(__uuidof(FileOpenDialog), nullptr, CLSCTX_ALL, IID_PPV_ARGS(file_open_dialog.ReleaseAndGetAddressOf())))) {
                 constexpr std::array<COMDLG_FILTERSPEC, 1> filterspec{
-                    { L"All supported", L"*.tif;*.jpeg;*.png;*.bmp" },
+                    { L"All supported", L"*.tif;*.jpg;*.png;*.bmp" },
                 };
                 file_open_dialog->SetFileTypes(filterspec.size(), filterspec.data());
                 if (SUCCEEDED(file_open_dialog->Show(nullptr))) {
