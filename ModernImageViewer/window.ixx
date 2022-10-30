@@ -25,10 +25,10 @@ public:
         create_window(cmd_show);
     }
 
-    void open_file(const wchar_t* path)
+    void open_file(std::filesystem::path path)
     {
         folder.open(path);
-        SetWindowTextW(shared::hwnd, path);
+        SetWindowTextW(shared::hwnd, path.c_str());
         Renderer::set_image(path);
     }
 
@@ -109,7 +109,7 @@ private:
             return window->wm_syskeydown(message, wparam, lparam);
         case WM_DROPFILES:
             window->folder.drag_and_drop(reinterpret_cast<HDROP>(wparam));
-            window->Renderer::set_image(window->folder.current_file.c_str());
+            window->Renderer::set_image(window->folder.current_file);
             break;
         case WM_DESTROY:
             PostQuitMessage(0);
@@ -286,7 +286,7 @@ private:
         if (path.empty())
             return;
         SetWindowTextW(shared::hwnd, path.c_str());
-        Renderer::set_image(path.c_str());
+        Renderer::set_image(path);
         if (!(shared::config.general & Config::General::fixed_window_dimensions))
             set_window_size();
     }
@@ -297,7 +297,7 @@ private:
         if (path.empty())
             return;
         SetWindowTextW(shared::hwnd, path.c_str());
-        Renderer::set_image(path.c_str());
+        Renderer::set_image(path);
         if (!(shared::config.general & Config::General::fixed_window_dimensions))
             set_window_size();
     }

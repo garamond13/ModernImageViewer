@@ -6,7 +6,7 @@ import device;
 
 export class Image : public Device {
 public:
-	void read_image(const wchar_t* path)
+	void read_image(const std::filesystem::path& path)
 	{
 		image_input = OIIO::ImageInput::open(path);
 		width = image_input->spec().width;

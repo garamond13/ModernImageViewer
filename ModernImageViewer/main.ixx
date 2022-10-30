@@ -13,7 +13,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, [[maybe_unused]] _In_opt_ HINSTA
     window->Renderer::initialize();
 
     //open file from windows file explorer
-    if (*lpCmdLine != '\0') {
+    if (*lpCmdLine != 0) {
         int num_args{ 1 };
         auto args{ CommandLineToArgvW(lpCmdLine, &num_args) };
         window->open_file(args[0]);

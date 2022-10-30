@@ -59,7 +59,7 @@ public:
 		swap_chain->Present(1, 0);
 	}
 
-	void set_image(const wchar_t* path)
+	void set_image(const std::filesystem::path& path)
 	{
 		Image::read_image(path);
 
