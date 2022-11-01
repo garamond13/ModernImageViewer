@@ -75,6 +75,7 @@ public:
 
 		Color_managment::create_3dtexture();
 		set_viewport();
+		Image::image_input->close();
 	}
 
 protected:

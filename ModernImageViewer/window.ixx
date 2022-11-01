@@ -129,6 +129,9 @@ private:
         case VK_RIGHT:
             next_file();
             break;
+        case VK_DELETE:
+            delete_file();
+            break;
         case VK_ESCAPE:
             if (is_fullscreen)
                 set_fullscreen();
@@ -158,6 +161,9 @@ private:
             break;
         case ID_MENU_FULLSCREEN:
             set_fullscreen();
+            break;
+        case ID_MENU_DELETE:
+            delete_file();
             break;
         case ID_MENU_SETTINGS: {
             Settings settings;
@@ -300,6 +306,27 @@ private:
         Renderer::set_image(path);
         if (!(shared::config.general & Config::General::fixed_window_dimensions))
             set_window_size();
+    }
+
+    void delete_file()
+    {
+        std::filesystem::path path = folder.current_file;
+        folder.remove_current_path();
+        if(!folder.current_file.empty())
+            Renderer::set_image(folder.current_file.c_str());
+
+        //SHFILEOPSTRUCTW.pFrom must be double null terminated
+        wchar_t path_copy[MAX_PATH + 1];
+        wcscpy_s(path_copy, path.c_str());
+        path_copy[std::char_traits<wchar_t>::length(path_copy) + 1] = '\0';
+
+        //sends file to the recycle bin
+        SHFILEOPSTRUCTW fileopenstruct{
+            .wFunc{ FO_DELETE },
+            .pFrom{ path_copy },
+            .fFlags{ FOF_ALLOWUNDO },
+        };
+        SHFileOperationW(&fileopenstruct);
     }
 
     bool is_maximized()

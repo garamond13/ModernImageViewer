@@ -34,6 +34,7 @@
 #define ID_MENU_SETTINGS                32781
 #define ID_MENU_ABOUT                   32782
 #define ID_MENU_EXIT                    32783
+#define ID_MENU_DELETE                  32784
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
@@ -42,7 +43,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        130
-#define _APS_NEXT_COMMAND_VALUE         32784
+#define _APS_NEXT_COMMAND_VALUE         32785
 #define _APS_NEXT_CONTROL_VALUE         1008
 #define _APS_NEXT_SYMED_VALUE           110
 #endif

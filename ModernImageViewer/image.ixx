@@ -62,6 +62,5 @@ public:
 	}
 	int width;
 	int height;
-private:
 	std::unique_ptr<OIIO::ImageInput> image_input;
 };

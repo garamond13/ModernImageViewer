@@ -65,6 +65,22 @@ public:
         }
     }
 
+    void remove_current_path() noexcept
+    {
+        for (size_t i{}; i < file_paths.size(); ++i) {
+            if (!file_paths[i].compare(current_file)) {
+                if (file_paths.size() <= 1)
+                    current_file = std::filesystem::path();
+                else if (i + 1 < file_paths.size())
+                    current_file = file_paths[i + 1];
+                else
+                    current_file = file_paths[i - 1];
+
+                file_paths.erase(file_paths.begin() + i);
+            }
+        }
+    }
+
     std::filesystem::path current_file;
 private:
     std::vector<std::filesystem::path> file_paths;
