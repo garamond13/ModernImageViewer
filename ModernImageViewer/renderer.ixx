@@ -125,7 +125,7 @@ private:
 		};
 		dxgi_factory2->CreateSwapChainForHwnd(dxgi_device2.Get(), shared::hwnd, &swap_chain_desc1, nullptr, nullptr, swap_chain.ReleaseAndGetAddressOf());
 
-		dxgi_factory2->MakeWindowAssociation(shared::hwnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER | DXGI_MWA_NO_PRINT_SCREEN);
+		dxgi_factory2->MakeWindowAssociation(shared::hwnd, DXGI_MWA_NO_ALT_ENTER);
 		create_render_target_view();
 		set_viewport();
 	}
