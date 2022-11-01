@@ -30,12 +30,11 @@ public:
     void drag_and_drop(HDROP hdrop)
     {
         file_paths.resize(0);
-        std::vector<wchar_t> path(MAX_PATH);
+        wchar_t path[MAX_PATH];
         UINT count{ DragQueryFileW(hdrop, 0xFFFFFFFF, nullptr, 0) };
-        for (UINT i{}; i < count; i++)
-            if (DragQueryFileW(hdrop, i, path.data(), MAX_PATH) > 0) {
-                file_paths.push_back(path.data());
-            }
+        for (UINT i{}; i < count; ++i)
+            if (DragQueryFileW(hdrop, i, path, MAX_PATH) > 0)
+                file_paths.push_back(path);
         current_file = file_paths[0];
         DragFinish(hdrop);
     }
