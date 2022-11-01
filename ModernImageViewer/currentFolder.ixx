@@ -27,15 +27,23 @@ public:
         return current_file;
     }
 
+    //if only one file is dropped map entire folder
+    //if multiple files are dropped map only those files
     void drag_and_drop(HDROP hdrop)
     {
-        file_paths.resize(0);
         wchar_t path[MAX_PATH];
-        UINT count{ DragQueryFileW(hdrop, 0xFFFFFFFF, nullptr, 0) };
-        for (UINT i{}; i < count; ++i)
-            if (DragQueryFileW(hdrop, i, path, MAX_PATH) > 0)
-                file_paths.push_back(path);
-        current_file = file_paths[0];
+        auto count{ DragQueryFileW(hdrop, 0xFFFFFFFF, nullptr, 0) };
+        if (count == 1) {
+            DragQueryFileW(hdrop, 0, path, MAX_PATH);
+            open(path);
+        }
+        else {
+            file_paths.resize(0);
+            for (UINT i{}; i < count; ++i)
+                if (DragQueryFileW(hdrop, i, path, MAX_PATH) > 0)
+                    file_paths.push_back(path);
+            current_file = file_paths[0];
+        }
         DragFinish(hdrop);
     }
 
