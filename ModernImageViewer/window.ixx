@@ -310,7 +310,7 @@ private:
 
     void delete_file()
     {
-        std::filesystem::path path = folder.current_file;
+        auto path{ folder.current_file };
         folder.remove_current_path();
         if(!folder.current_file.empty())
             Renderer::set_image(folder.current_file.c_str());
