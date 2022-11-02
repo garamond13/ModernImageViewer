@@ -314,6 +314,12 @@ private:
         folder.remove_current_path();
         if(!folder.current_file.empty())
             Renderer::set_image(folder.current_file.c_str());
+        else {
+            //effectively after deleting the last file just render the background color
+            Image::width = 0;
+            Image::height = 0;
+            Renderer::set_viewport();
+        }
 
         //SHFILEOPSTRUCTW.pFrom must be double null terminated
         wchar_t path_copy[MAX_PATH + 1];

@@ -91,6 +91,33 @@ protected:
 		}
 	}
 
+	void set_viewport()
+	{
+		D3D11_VIEWPORT viewport{};
+		if (Image::width && Image::height) {
+			//the swapchain will have a size that matches the window size
+			DXGI_SWAP_CHAIN_DESC1 swap_chain_desc1;
+			swap_chain->GetDesc1(&swap_chain_desc1);
+
+			//maximise the image size inside the window but keep the aspect ratio of the image and center it
+			if (static_cast<float>(swap_chain_desc1.Width) / static_cast<float>(swap_chain_desc1.Height) > static_cast<float>(Image::width) / static_cast<float>(Image::height)) {
+				viewport.Width = static_cast<float>(Image::width) * static_cast<float>(swap_chain_desc1.Height) / static_cast<float>(Image::height);
+				viewport.Height = static_cast<float>(swap_chain_desc1.Height);
+
+				//offset image in order to center it in the window
+				viewport.TopLeftX = (static_cast<float>(swap_chain_desc1.Width) - viewport.Width) / 2.0f;
+			}
+			else {
+				viewport.Width = static_cast<float>(swap_chain_desc1.Width);
+				viewport.Height = static_cast<float>(Image::height) * static_cast<float>(swap_chain_desc1.Width) / static_cast<float>(Image::width);
+
+				//offset image in order to center it in the window
+				viewport.TopLeftY = (static_cast<float>(swap_chain_desc1.Height) - viewport.Height) / 2.0f;
+			}
+		}
+		device_context->RSSetViewports(1, &viewport);
+	}
+
 private:
 	void create_swap_chain()
 	{
@@ -135,33 +162,6 @@ private:
 		Microsoft::WRL::ComPtr<ID3D11Texture2D> back_buffer;
 		swap_chain->GetBuffer(0u, IID_PPV_ARGS(back_buffer.ReleaseAndGetAddressOf()));
 		device->CreateRenderTargetView(back_buffer.Get(), nullptr, render_target_view.ReleaseAndGetAddressOf());
-	}
-
-	void set_viewport()
-	{
-		D3D11_VIEWPORT viewport{};
-		if (Image::width && Image::height) {
-			//the swapchain will have a size that matches the window size
-			DXGI_SWAP_CHAIN_DESC1 swap_chain_desc1;
-			swap_chain->GetDesc1(&swap_chain_desc1);
-
-			//maximise the image size inside the window but keep the aspect ratio of the image and center it
-			if (static_cast<float>(swap_chain_desc1.Width) / static_cast<float>(swap_chain_desc1.Height) > static_cast<float>(Image::width) / static_cast<float>(Image::height)) {
-				viewport.Width = static_cast<float>(Image::width) * static_cast<float>(swap_chain_desc1.Height) / static_cast<float>(Image::height);
-				viewport.Height = static_cast<float>(swap_chain_desc1.Height);
-
-				//offset image in order to center it in the window
-				viewport.TopLeftX = (static_cast<float>(swap_chain_desc1.Width) - viewport.Width) / 2.0f;
-			}
-			else {
-				viewport.Width = static_cast<float>(swap_chain_desc1.Width);
-				viewport.Height = static_cast<float>(Image::height) * static_cast<float>(swap_chain_desc1.Width) / static_cast<float>(Image::width);
-
-				//offset image in order to center it in the window
-				viewport.TopLeftY = (static_cast<float>(swap_chain_desc1.Height) - viewport.Height) / 2.0f;
-			}
-		}
-		device_context->RSSetViewports(1, &viewport);
 	}
 
 	template <typename T>
