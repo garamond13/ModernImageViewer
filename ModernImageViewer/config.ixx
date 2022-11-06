@@ -107,7 +107,8 @@ public:
 			<< kernel << '\n'
 			<< radius << '\n'
 			<< param1 << '\n'
-			<< param2 << '\n';
+			<< param2 << '\n'
+			<< antiringing << '\n';
 	}
 
 	void read()
@@ -133,7 +134,8 @@ public:
 			>> kernel
 			>> radius
 			>> param1
-			>> param2;
+			>> param2
+			>> antiringing;
 	}
 
 	//if passed flags are already set it will unset them
