@@ -169,7 +169,7 @@ private:
             Button_SetCheck(GetDlgItem(hdlg, IDC_OPTIMISE), BST_CHECKED);
 
         //color intent
-        constexpr std::array<const wchar_t*, 4> intents{
+        constexpr std::array intents{
                 L"perceptual", //0
                 L"relative colormetric", //1
                 L"saturation", //2
