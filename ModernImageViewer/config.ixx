@@ -106,8 +106,8 @@ public:
 	{
 		general = General::auto_hide_cursor | General::fixed_window_dimensions;
 		color_managment = Color_managment::enable | Color_managment::intent_perceptual;
-		window_width = 960;
-		window_height = 720;
+		window_width = 1200;
+		window_height = 900;
 	}
 
 	void write_defaults()
