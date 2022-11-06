@@ -10,6 +10,7 @@
 #define IDD_PROPPAGE_GENERAL            107
 #define IDI_SMALL                       108
 #define IDD_PROPPAGE_COLOR_MANAGMENT    108
+#define IDD_PROPPAGE_SCALING            109
 #define IDR_MAINFRAME                   128
 #define IDR_MENU1                       129
 #define IDR_MENU                        129
@@ -21,6 +22,17 @@
 #define IDC_RENDERING_INTENT            1005
 #define IDC_USE_BLACKPOINT_COMPENSATION 1006
 #define IDC_OPTIMISE                    1007
+#define IDC_COMBO1                      1008
+#define IDC_KERNEL1                     1008
+#define IDC_KERNEL_LABLE                1009
+#define IDC_RADIUS                      1010
+#define IDC_PARAM1                      1011
+#define IDC_PARAM2                      1012
+#define IDC_ANTIRINGING                 1013
+#define IDC_RADIUS_LABLE                1014
+#define IDC_PARAM1_LABLE                1015
+#define IDC_PARAM2_LABLE                1016
+#define IDC_ANTIRINGING_LABLE           1017
 #define ID_OPEN_NEXT                    32771
 #define ID_OPEN_PREVIOUS                32772
 #define ID_OPEN_FULLSCREEN              32773
@@ -44,7 +56,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        130
 #define _APS_NEXT_COMMAND_VALUE         32785
-#define _APS_NEXT_CONTROL_VALUE         1008
+#define _APS_NEXT_CONTROL_VALUE         1011
 #define _APS_NEXT_SYMED_VALUE           110
 #endif
 #endif

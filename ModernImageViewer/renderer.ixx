@@ -14,7 +14,15 @@ import shared;
 struct alignas(16) Cbuffer_cb1_data {
 	float image_width;
 	float image_height;
+	int kernel;
 	BOOL use_color_managment;
+};
+
+struct alignas(16) Cbuffer_cb2_data {
+	float radius;
+	float param1;
+	float param2;
+	float antiringing;
 };
 
 export class Renderer : public Color_managment {
@@ -41,7 +49,10 @@ public:
 		device->CreateSamplerState(&sampler_desc, sampler_state.ReleaseAndGetAddressOf());
 		device_context->PSSetSamplers(0, 1, sampler_state.GetAddressOf());
 
+		//create constant buffers
 		create_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.ReleaseAndGetAddressOf());
+		create_constant_buffer<Cbuffer_cb2_data>(cbuffer_cb2.ReleaseAndGetAddressOf());
+		
 		create_swap_chain();
 	}
 
@@ -66,12 +77,21 @@ public:
 		//set constant buffer cb1
 		cbuffer_cb1_data.image_width = Image::width;
 		cbuffer_cb1_data.image_height = Image::height;
+		cbuffer_cb1_data.kernel = shared::config.kernel;
 		if (shared::config.color_managment & Config::Color_managment::enable)
 			cbuffer_cb1_data.use_color_managment = 1;
 		else
 			cbuffer_cb1_data.use_color_managment = 0;
 		update_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.Get(), cbuffer_cb1_data);
 		device_context->PSSetConstantBuffers(0, 1, cbuffer_cb1.GetAddressOf());
+
+		//set constant buffer cb2
+		cbuffer_cb2_data.antiringing = shared::config.antiringing;
+		cbuffer_cb2_data.radius = shared::config.radius;
+		cbuffer_cb2_data.param1 = shared::config.param1;
+		cbuffer_cb2_data.param2 = shared::config.param2;
+		update_constant_buffer<Cbuffer_cb2_data>(cbuffer_cb2.Get(), cbuffer_cb2_data);
+		device_context->PSSetConstantBuffers(1, 1, cbuffer_cb2.GetAddressOf());
 
 		Color_managment::create_3dtexture();
 		set_viewport();
@@ -195,4 +215,6 @@ private:
 	Microsoft::WRL::ComPtr<IDXGISwapChain1> swap_chain;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> cbuffer_cb1;
 	Cbuffer_cb1_data cbuffer_cb1_data;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> cbuffer_cb2;
+	Cbuffer_cb2_data cbuffer_cb2_data;
 };

@@ -11,7 +11,7 @@ export class Settings : Config {
 public:
     Settings()
     {
-        std::array<PROPSHEETPAGEW, 2> pages{
+        std::array pages{
             PROPSHEETPAGEW{
                 .dwSize{ sizeof(PROPSHEETPAGEW) },
                 .dwFlags{ PSP_USETITLE },
@@ -28,6 +28,15 @@ public:
                 .pszTemplate{ MAKEINTRESOURCE(IDD_PROPPAGE_COLOR_MANAGMENT) },
                 .pszTitle{ L"Color managment" },
                 .pfnDlgProc{ color_managment_procedure },
+                .lParam{ reinterpret_cast<LPARAM>(this) },
+            },
+            PROPSHEETPAGEW{
+                .dwSize{ sizeof(PROPSHEETPAGEW) },
+                .dwFlags{ PSP_USETITLE },
+                .hInstance{ shared::hinstance },
+                .pszTemplate{ MAKEINTRESOURCE(IDD_PROPPAGE_SCALING) },
+                .pszTitle{ L"Scaling" },
+                .pfnDlgProc{ scaling_procedure },
                 .lParam{ reinterpret_cast<LPARAM>(this) },
             },
         };
@@ -257,6 +266,189 @@ private:
                 Button_SetCheck(GetDlgItem(hdlg, IDC_OPTIMISE), BST_CHECKED);
             }
             is_change_made = true;
+        }
+        return 0;
+    }
+
+    static LRESULT CALLBACK scaling_procedure(HWND hdlg, UINT uMessage, WPARAM wparam, LPARAM lparam)
+    {
+        static Settings* settings;
+        switch (uMessage) {
+        case WM_INITDIALOG:
+            settings = reinterpret_cast<Settings*>(lparam);
+            settings->kernel = shared::config.kernel;
+            settings->radius = shared::config.radius;
+            settings->param1 = shared::config.param1;
+            settings->param2 = shared::config.param2;
+            settings->antiringing = shared::config.antiringing;
+            return settings->scaling_wm_initdialog(hdlg);
+        case WM_COMMAND:
+            PropSheet_Changed(GetParent(hdlg), hdlg); //on any command notification, enable the Apply button
+            return settings->scaling_wm_command(hdlg, wparam, lparam);
+        case WM_NOTIFY:
+            //sent when OK or Apply button pressed
+            if (reinterpret_cast<LPNMHDR>(lparam)->code == PSN_APPLY) {
+                shared::config.kernel = settings->kernel;
+                shared::config.radius = settings->radius;
+                shared::config.param1 = settings->param1;
+                shared::config.param2 = settings->param2;
+                shared::config.antiringing = settings->antiringing;
+                shared::config.write();
+                settings->is_change_made = false; //reset value
+            }
+            break;
+        }
+        return 0;
+    }
+
+    LRESULT scaling_wm_initdialog(HWND hdlg)
+    {
+        constexpr std::array kernels{
+                L"Lanczos", //0
+                L"Cosine", //1
+                L"Hann", //2
+                L"Hamming", //3
+                L"Blackman", //4
+                L"Kaiser", //5
+                L"Welch", //6
+                L"Said", //7
+                L"BC-Spline", //8
+                L"Bicubic", //9
+                L"Nearest neighbor", //10
+                L"Linear", //11
+        };
+        auto dlg_item{ GetDlgItem(hdlg, IDC_KERNEL1) };
+        for (int i{}; i < kernels.size(); ++i)
+            SendMessageW(dlg_item, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(kernels.at(i)));
+
+        //display currently set kernel, the order of WPARAM values is the as in the array above
+        if (kernel == Config::Kernel::lanczos.kernel) {
+            SendMessageW(dlg_item, CB_SETCURSEL, 0, 0);
+        }
+        else if (kernel == Config::Kernel::cosine.kernel) {
+            SendMessageW(dlg_item, CB_SETCURSEL, 1, 0);
+        }
+        else if (kernel == Config::Kernel::hann.kernel) {
+            SendMessageW(dlg_item, CB_SETCURSEL, 2, 0);
+        }
+        else if (kernel == Config::Kernel::hamming.kernel) {
+            SendMessageW(dlg_item, CB_SETCURSEL, 3, 0);
+        }
+        else if (kernel == Config::Kernel::blackman.kernel) {
+            SendMessageW(dlg_item, CB_SETCURSEL, 4, 0);
+        }
+        else if (kernel == Config::Kernel::kaiser.kernel) {
+            SendMessageW(dlg_item, CB_SETCURSEL, 5, 0);
+        }
+        else if (kernel == Config::Kernel::welch.kernel) {
+            SendMessageW(dlg_item, CB_SETCURSEL, 6, 0);
+        }
+        else if (kernel == Config::Kernel::said.kernel) {
+            SendMessageW(dlg_item, CB_SETCURSEL, 7, 0);
+        }
+        else if (kernel == Config::Kernel::bc_spline.kernel) {
+            SendMessageW(dlg_item, CB_SETCURSEL, 8, 0);
+        }
+        else if (kernel == Config::Kernel::bicubic.kernel) {
+            SendMessageW(dlg_item, CB_SETCURSEL, 9, 0);
+        }
+        else if (kernel == Config::Kernel::nearest_neighbor.kernel) {
+            SendMessageW(dlg_item, CB_SETCURSEL, 10, 0);
+        }
+        else { //linear
+            SendMessageW(dlg_item, CB_SETCURSEL, 11, 0);
+        }
+        
+        //set edit boxes
+        SetDlgItemTextW(hdlg, IDC_RADIUS, (std::to_wstring(static_cast<int>(shared::config.radius))).c_str());
+        SetDlgItemTextW(hdlg, IDC_PARAM1, (std::to_wstring(shared::config.param1)).c_str());
+        SetDlgItemTextW(hdlg, IDC_PARAM2, (std::to_wstring(shared::config.param2)).c_str());
+        SetDlgItemTextW(hdlg, IDC_ANTIRINGING, (std::to_wstring(shared::config.antiringing)).c_str());
+        
+        return 1;
+    }
+
+    LRESULT scaling_wm_command(HWND hdlg, WPARAM wparam, LPARAM lparam)
+    {
+        if (HIWORD(wparam) == CBN_SELCHANGE) {
+            auto index{ SendMessageW((HWND)lparam, (UINT)CB_GETCURSEL, 0, 0) };
+            switch (index) {
+            case 0:
+                kernel = Config::Kernel::lanczos.kernel;
+                break;
+            case 1:
+                kernel = Config::Kernel::cosine.kernel;
+                break;
+            case 2:
+                kernel = Config::Kernel::hann.kernel;
+                break;
+            case 3:
+                kernel = Config::Kernel::hamming.kernel;
+                break;
+            case 4:
+                kernel = Config::Kernel::blackman.kernel;
+                break;
+            case 5:
+                kernel = Config::Kernel::kaiser.kernel;
+                break;
+            case 6:
+                kernel = Config::Kernel::welch.kernel;
+                break;
+            case 7:
+                kernel = Config::Kernel::said.kernel;
+                break;
+            case 8:
+                kernel = Config::Kernel::bc_spline.kernel;
+                break;
+            case 9:
+                kernel = Config::Kernel::bicubic.kernel;
+                break;
+            case 10:
+                kernel = Config::Kernel::nearest_neighbor.kernel;
+                break;
+            default:
+                kernel = 0; //linear
+                break;
+            }
+            is_change_made = true;
+        }
+        switch (LOWORD(wparam)) {
+        case IDC_RADIUS:
+            if (HIWORD(wparam) == EN_CHANGE) {
+                constexpr int buffer_size{ 6 };
+                wchar_t buffer[buffer_size];
+                GetDlgItemTextW(hdlg, IDC_RADIUS, buffer, buffer_size);
+                radius = std::wcstof(buffer, nullptr);
+                is_change_made = true;
+            }
+            break;
+        case IDC_PARAM1:
+            if (HIWORD(wparam) == EN_CHANGE) {
+                constexpr int buffer_size{ 6 };
+                wchar_t buffer[buffer_size];
+                GetDlgItemTextW(hdlg, IDC_PARAM1, buffer, buffer_size);
+                param1 = std::wcstof(buffer, nullptr);
+                is_change_made = true;
+            }
+            break;
+        case IDC_PARAM2:
+            if (HIWORD(wparam) == EN_CHANGE) {
+                constexpr int buffer_size{ 6 };
+                wchar_t buffer[buffer_size];
+                GetDlgItemTextW(hdlg, IDC_PARAM2, buffer, buffer_size);
+                param2 = std::wcstof(buffer, nullptr);
+                is_change_made = true;
+            }
+            break;
+        case IDC_ANTIRINGING:
+            if (HIWORD(wparam) == EN_CHANGE) {
+                constexpr int buffer_size{ 6 };
+                wchar_t buffer[buffer_size];
+                GetDlgItemTextW(hdlg, IDC_ANTIRINGING, buffer, buffer_size);
+                antiringing = std::wcstof(buffer, nullptr);
+                is_change_made = true;
+            }
+            break;
         }
         return 0;
     }

@@ -43,6 +43,51 @@ public:
 		Color_managment() = delete;
 	};
 
+	struct Kernel {
+		struct Kernel_type {
+			flag_type kernel;
+			float radius;
+		};
+		//linear == 0;
+		static constexpr Kernel_type lanczos{
+			.kernel{ 1 },
+		};
+		static constexpr Kernel_type cosine{
+			.kernel{ 2 },
+		};
+		static constexpr Kernel_type hann{
+			.kernel{ 3 },
+		};
+		static constexpr Kernel_type hamming{
+			.kernel{ 4 },
+		};
+		static constexpr Kernel_type blackman{
+			.kernel{ 5 },
+		};
+		static constexpr Kernel_type kaiser{
+			.kernel{ 6 },
+		};
+		static constexpr Kernel_type welch{
+			.kernel{ 7 },
+		};
+		static constexpr Kernel_type said{
+			.kernel{ 8 },
+		};
+		static constexpr Kernel_type bc_spline{
+			.kernel{ 9 },
+			.radius{ 2.0 }, //fixed radius
+		};
+		static constexpr Kernel_type bicubic{
+			.kernel{ 10 },
+			.radius{ 2.0 }, //fixed radius
+		};
+		static constexpr Kernel_type nearest_neighbor{
+			.kernel{ 11 },
+			.radius{ 1.0 }, //fixed radius
+		};
+		Kernel_type kernel;
+	};
+
 	void write()
 	{
 		std::filesystem::path config_path;
@@ -58,6 +103,11 @@ public:
 			<< background_color << '\n';
 		for (size_t i{}; i < custom_colors.size(); ++i)
 			file << custom_colors[i] << '\n';
+		file
+			<< kernel << '\n'
+			<< radius << '\n'
+			<< param1 << '\n'
+			<< param2 << '\n';
 	}
 
 	void read()
@@ -79,6 +129,11 @@ public:
 			>> background_color;
 		for (int i{}; i < custom_colors.size(); ++i)
 			file >> custom_colors[i];
+		file
+			>> kernel
+			>> radius
+			>> param1
+			>> param2;
 	}
 
 	//if passed flags are already set it will unset them
@@ -108,6 +163,8 @@ public:
 		color_managment = Color_managment::enable | Color_managment::intent_perceptual;
 		window_width = 1200;
 		window_height = 900;
+		kernel = Kernel::hann.kernel;
+		radius = 3.0;
 	}
 
 	void write_defaults()
@@ -122,6 +179,11 @@ public:
 	int window_height;
 	COLORREF background_color;
 	std::array<COLORREF, 16> custom_colors;
+	flag_type kernel;
+	float radius;
+	float param1;
+	float param2;
+	float antiringing;
 
 	private:
 		//config path: %USERPROFILE%\AppData\Local\ModernImageViever\config.dat

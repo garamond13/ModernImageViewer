@@ -5,7 +5,15 @@ SamplerState smp : register(s0);
 cbuffer cb1 : register(b0)
 {
     float2 wh; //image width and height
+    int kernel;
     bool cm; //use color managment
+};
+
+cbuffer cb2 : register(b1)
+{
+    float radius; //kernel radius
+    float2 param; //kernel specific parameters, param.x == param1, param.y == param2
+    float antiringing; //antiringing strenght
 };
 
 struct Vertex_shader_output
@@ -13,6 +21,92 @@ struct Vertex_shader_output
     float4 position : SV_Position; //xyzw
     float2 texcoord : TEXCOORD; //uv
 };
+
+//source corecrt_math_defines.h
+#define M_PI 3.14159265358979323846 //pi
+#define M_PI_2 1.57079632679489661923 //pi/2
+#define M_E 2.71828182845904523536 //e
+
+//based on https://www.boost.org/doc/libs/1_54_0/libs/math/doc/html/math_toolkit/bessel/mbessel.html
+float bessel_i0(float x)
+{
+    const float P1[] = {
+        -2.2335582639474375249e+15,
+        -5.5050369673018427753e+14,
+        -3.2940087627407749166e+13,
+        -8.4925101247114157499e+11,
+        -1.1912746104985237192e+10,
+        -1.0313066708737980747e+08,
+        -5.9545626019847898221e+05,
+        -2.4125195876041896775e+03,
+        -7.0935347449210549190e+00,
+        -1.5453977791786851041e-02,
+        -2.5172644670688975051e-05,
+        -3.0517226450451067446e-08,
+        -2.6843448573468483278e-11,
+        -1.5982226675653184646e-14,
+        -5.2487866627945699800e-18,
+    };
+    const float Q1[] = {
+        -2.2335582639474375245e+15,
+        7.8858692566751002988e+12,
+        -1.2207067397808979846e+10,
+        1.0377081058062166144e+07,
+        -4.8527560179962773045e+03,
+        1.0,
+    };
+    static const float P2[] = {
+        -2.2210262233306573296e-04,
+        1.3067392038106924055e-02,
+        -4.4700805721174453923e-01,
+        5.5674518371240761397e+00,
+        -2.3517945679239481621e+01,
+        3.1611322818701131207e+01,
+        -9.6090021968656180000e+00,
+    };
+    static const float Q2[] = {
+        -5.5194330231005480228e-04,
+        3.2547697594819615062e-02,
+        -1.1151759188741312645e+00,
+        1.3982595353892851542e+01,
+        -6.0228002066743340583e+01,
+        8.5539563258012929600e+01,
+        -3.1446690275135491500e+01,
+        1.0,
+    };
+    if (x < 0.0)
+        x = -x;
+    if (x == 0.0)
+        return 1.0;
+    else if (x <= 15.0) {
+        float y = x * x;
+        float p1sum = P1[14];
+        for (int i = 13; i >= 0; --i) {
+            p1sum *= y;
+            p1sum += P1[i];
+        }
+        float q1sum = Q1[5];
+        for (i = 4; i >= 0; --i) {
+            q1sum *= y;
+            q1sum += Q1[i];
+        }
+        return p1sum / q1sum;
+    }
+    else {
+        float y = 1.0 / x - 1.0 / 15.0;
+        float p2sum = P2[6];
+        for (int i = 5; i >= 0; --i) {
+            p2sum *= y;
+            p2sum += P2[i];
+        }
+        float q2sum = Q2[7];
+        for (i = 6; i >= 0; --i) {
+            q2sum *= y;
+            q2sum += Q2[i];
+        }
+        return exp(x) / sqrt(x) * p2sum / q2sum;
+    }
+}
 
 //based on https://doi.org/10.2312/egp.20211031 and on https://github.com/ledoge/dwm_lut/blob/master/dwm_lut.c
 float3 color_transform(float3 rgb)
@@ -44,45 +138,160 @@ float3 color_transform(float3 rgb)
     return (1.0 - s.x) * SAMPLE_LUT(base) + s.z * SAMPLE_LUT(base + 1.0) + (s.x - s.y) * SAMPLE_LUT(base + vert2) + (s.y - s.z) * SAMPLE_LUT(base + vert3);
 }
 
-//bsed on https://gist.github.com/TheRealMJP/c83b8c0f46b63f3a88a5986f4fa982b1 and on https://vec3.ca/bicubic-filtering-in-fewer-taps/
-float4 catmull_rom(float2 uv)
+float sinc(float x)
+{
+    if (x == 0.0)
+        return 1.0;
+    else {
+        x *= M_PI;
+        return sin(x) / (x);
+    }
+}
+
+float cosine(float x)
+{
+    return cos(M_PI_2 * x);
+}
+
+float hann(float x)
+{
+    return 0.5 + 0.5 * cos(M_PI * x);
+}
+
+float hamming(float x)
+{
+    return 0.54 + 0.46 * cos(M_PI * x);
+}
+
+float blackman(float x)
+{
+    //precalculated for alpha = 0.16
+    x *= M_PI;
+    return 0.42 + 0.5 * cos(x) + 0.08 * cos(2.0 * x);
+}
+
+float kaiser(float x)
+{
+    //param.x == beta == pi * alpha
+    return x > 1.0 ? 0.0 : bessel_i0(param.x * sqrt(1.0 - x * x)) / bessel_i0(param.x);
+}
+
+float welch(float x)
+{
+    return 1.0 - x * x;
+}
+
+//source https://www.hpl.hp.com/techreports/2007/HPL-2007-179.pdf
+float said(float x)
+{
+    //param.x == chi
+    //param.y == eta
+    float extracted = M_PI * param.x * x / (2.0 - param.y);
+    return sinc(x) * cosh(sqrt(2.0 * param.y) * extracted) * pow(M_E, -(extracted * extracted));
+}
+
+float bc_spline(float x)
+{
+    //param.x == b
+    //param.y == c
+    if (x < 1.0)
+        return ((12.0 - 9.0 * param.x - 6.0 * param.y) * x * x * x + (-18.0 + 12.0 * param.x + 6.0 * param.y) * x * x + (6.0 - 2.0 * param.x)) / 6.0;
+    else //x < 2.0
+        return ((-param.x - 6.0 * param.y) * x * x * x + (6.0 * param.x + 30.0 * param.y) * x * x + (-12.0 * param.x - 48.0 * param.y) * x + (8.0 * param.x + 24.0 * param.y)) / 6.0;
+}
+
+float bicubic(float x)
+{
+    if (x <= 1.0)
+        return (param.x + 2.0) * x * x * x - (param.x + 3.0) * x * x + 1.0;
+    else // x < 2.0
+        return param.x * x * x * x - 5.0 * param.x * x * x + 8.0 * param.x * x - 4.0 * param.x;
+}
+
+float nearest_neighbor(float x)
+{
+    return x < 0.5 ? 1.0 : 0.0;
+}
+
+float get_weight(float x)
+{
+    if (x < radius) {
+        if (kernel == 1)
+            return sinc(x) * sinc(x / radius);
+        else if (kernel == 2)
+            return sinc(x) * cosine(x / radius);
+        else if (kernel == 3)
+            return sinc(x) * hann(x / radius);
+        else if (kernel == 4)
+            return sinc(x) * hamming(x / radius);
+        else if (kernel == 5)
+            return sinc(x) * blackman(x / radius);
+        else if (kernel == 6)
+            return sinc(x) * kaiser(x / radius);
+        else if (kernel == 7)
+            return sinc(x) * welch(x / radius);
+        else if (kernel == 8)
+            return said(x);
+        else if (kernel == 9)
+            return bc_spline(x);
+        else if (kernel == 10)
+            return bicubic(x);
+        else //11
+            return nearest_neighbor(x);
+    }
+    else
+        return 0.0;
+}
+
+float4 sample_2d(float2 uv)
 {
     uv *= wh;
+    float2 tc = floor(uv - 0.5) + 0.5; //texel center
+    float2 f = uv - tc; //fractional offset
+    float wsum = 0.0; //weight sum
+    float4 csum = 0.0; //weighted color sum
     
-    //texel center
-    float2 tc1 = floor(uv - 0.5) + 0.5;
+    //antiringing
+    float4 lo = 1.0;
+    float4 hi = 0.0;
     
-    //fractional offset
-    float2 f = uv - tc1;
+    for (float y = 1.0 - radius; y <= radius; y += 1.0) {
+        float2 w; //weights
+        float4 lsum = 0.0; //weighted line sum, one line of pixels
+        w.y = get_weight(abs(y - f.y));
+        
+        for (float x = 1.0 - radius; x <= radius; x += 1.0) {
+            float4 c = tex.Sample(smp, (tc + float2(x, y)) / wh);
+            w.x = get_weight(abs(x - f.x));
+            lsum += w.x * c;
+            wsum += w.x * w.y;
+            
+            //antiringing
+            if (antiringing > 0.0 && (x >= 0.0 && y >= 0.0 && x <= 1.0 && y <= 1.0)) {
+                lo = min(lo, c);
+                hi = max(hi, c);
+            }
+        }
+        csum += w.y * lsum;
+    }
+    csum /= wsum; //normalize color values
     
-    //weights
-    float2 w0 = f * (-0.5 + f * (1.0 - 0.5 * f));
-    float2 w1 = 1.0 + f * f * (-2.5 + 1.5 * f);
-    float2 w3 = f * f * (-0.5 + 0.5 * f);
-    float2 w12 = 1.0 - w0 - w3;
+    //antiringing
+    if (antiringing > 0.0)
+        csum = lerp(csum, clamp(csum, lo, hi), antiringing);
     
-    //sampling coordinates
-    float2 tc0 = (tc1 - 1.0) / wh;
-    float2 tc3 = (tc1 + 2.0) / wh;
-    float2 tc12 = (tc1 + (w12 - w1) / w12) / wh;
-    
-    return
-        tex.Sample(smp, float2(tc0.x, tc0.y)) * w0.x * w0.y +
-        tex.Sample(smp, float2(tc12.x, tc0.y)) * w12.x * w0.y +
-        tex.Sample(smp, float2(tc3.x, tc0.y)) * w3.x * w0.y +
-        tex.Sample(smp, float2(tc0.x, tc12.y)) * w0.x * w12.y +
-        tex.Sample(smp, float2(tc12.x, tc12.y)) * w12.x * w12.y +
-        tex.Sample(smp, float2(tc3.x, tc12.y)) * w3.x * w12.y +
-        tex.Sample(smp, float2(tc0.x, tc3.y)) * w0.x * w3.y +
-        tex.Sample(smp, float2(tc12.x, tc3.y)) * w12.x * w3.y +
-        tex.Sample(smp, float2(tc3.x, tc3.y)) * w3.x * w3.y;
+    return csum;
 }
 
 float4 main(Vertex_shader_output input) : SV_Target
 {
-    //apply color managment
-    if (cm)
-        return float4(color_transform(catmull_rom(input.texcoord).rgb), 1.0);
+    float4 color;
+    if(kernel != 0)
+        color = sample_2d(input.texcoord);
     else
-        return catmull_rom(input.texcoord);
+        color = tex.Sample(smp, input.texcoord);
+    if (cm)
+        return float4(color.rgb, color.a);
+    else
+        return color;
 }
