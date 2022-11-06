@@ -67,7 +67,7 @@ public:
 
 		//chechs if the config.dat exists and if not creates it with default settings
 		if (!std::filesystem::exists(config_path))
-			write_defaults(config_path);
+			write_defaults();
 
 		//open file for reading, than read line by line
 		std::wifstream file(config_path);
@@ -110,22 +110,10 @@ public:
 		window_height = 720;
 	}
 
-	void write_defaults(const std::filesystem::path& path)
+	void write_defaults()
 	{
 		set_defaults();
-		std::filesystem::path config_path;
-		get_path(config_path);
-
-		//open file for writing, than write line by line
-		std::wofstream file(config_path);
-		file
-			<< general << '\n'
-			<< color_managment << '\n'
-			<< window_width << '\n'
-			<< window_height << '\n'
-			<< background_color << '\n';
-		for (size_t i{}; i < custom_colors.size(); ++i)
-			file << custom_colors[i] << '\n';
+		write();
 	}
 
 	flag_type general;
