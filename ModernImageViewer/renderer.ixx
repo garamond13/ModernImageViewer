@@ -100,8 +100,8 @@ protected:
 			swap_chain->GetDesc1(&swap_chain_desc1);
 
 			//maximise the image size inside the window but keep the aspect ratio of the image and center it
-			if (static_cast<float>(swap_chain_desc1.Width) / static_cast<float>(swap_chain_desc1.Height) > static_cast<float>(Image::width) / static_cast<float>(Image::height)) {
-				viewport.Width = static_cast<float>(Image::width) * static_cast<float>(swap_chain_desc1.Height) / static_cast<float>(Image::height);
+			if (get_ratio<float>( swap_chain_desc1.Width, swap_chain_desc1.Height) > get_ratio<float>(Image::width, Image::height)) {
+				viewport.Width = static_cast<float>(Image::width) * get_ratio<float>(swap_chain_desc1.Height, Image::height);
 				viewport.Height = static_cast<float>(swap_chain_desc1.Height);
 
 				//offset image in order to center it in the window
@@ -109,7 +109,7 @@ protected:
 			}
 			else {
 				viewport.Width = static_cast<float>(swap_chain_desc1.Width);
-				viewport.Height = static_cast<float>(Image::height) * static_cast<float>(swap_chain_desc1.Width) / static_cast<float>(Image::width);
+				viewport.Height = static_cast<float>(Image::height) * get_ratio<float>(swap_chain_desc1.Width, Image::width);
 
 				//offset image in order to center it in the window
 				viewport.TopLeftY = (static_cast<float>(swap_chain_desc1.Height) - viewport.Height) / 2.0f;
@@ -183,6 +183,12 @@ private:
 		device_context->Map(buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_subresource);
 		memcpy(mapped_subresource.pData, &data, sizeof(T));
 		device_context->Unmap(buffer, 0);
+	}
+
+	template<typename T>
+	constexpr T get_ratio(auto a, auto b) noexcept
+	{
+		return static_cast<T>(a) / static_cast<T>(b);
 	}
 
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> render_target_view;
