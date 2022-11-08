@@ -4,16 +4,17 @@ SamplerState smp : register(s0);
 
 cbuffer cb1 : register(b0)
 {
-    float2 wh; //image width and height
-    int kernel;
-    bool cm; //use color managment
+    bool use_color_managment; //use color managment
 };
 
 cbuffer cb2 : register(b1)
 {
+    float2 image_dimensions; //image width and height
+    int kernel_index;
     float radius; //kernel radius
-    float2 param; //kernel specific parameters, param.x == param1, param.y == param2
+    float2 kparam; //kernel specific parameters, kparam.x == kparam1, kparam.y == kparam2
     float antiringing; //antiringing strenght
+    float widening_factor; //if downsampling, > 1.0 else == 1.0
 };
 
 struct Vertex_shader_output
@@ -144,7 +145,7 @@ float sinc(float x)
         return 1.0;
     else {
         x *= M_PI;
-        return sin(x) / (x);
+        return sin(x) / x;
     }
 }
 
@@ -173,7 +174,7 @@ float blackman(float x)
 float kaiser(float x)
 {
     //param.x == beta == pi * alpha
-    return x > 1.0 ? 0.0 : bessel_i0(param.x * sqrt(1.0 - x * x)) / bessel_i0(param.x);
+    return x > 1.0 ? 0.0 : bessel_i0(kparam.x * sqrt(1.0 - x * x)) / bessel_i0(kparam.x);
 }
 
 float welch(float x)
@@ -186,8 +187,8 @@ float said(float x)
 {
     //param.x == chi
     //param.y == eta
-    float extracted = M_PI * param.x * x / (2.0 - param.y);
-    return sinc(x) * cosh(sqrt(2.0 * param.y) * extracted) * pow(M_E, -(extracted * extracted));
+    float extracted = M_PI * kparam.x * x / (2.0 - kparam.y);
+    return sinc(x) * cosh(sqrt(2.0 * kparam.y) * extracted) * pow(M_E, -(extracted * extracted));
 }
 
 float bc_spline(float x)
@@ -195,17 +196,17 @@ float bc_spline(float x)
     //param.x == b
     //param.y == c
     if (x < 1.0)
-        return ((12.0 - 9.0 * param.x - 6.0 * param.y) * x * x * x + (-18.0 + 12.0 * param.x + 6.0 * param.y) * x * x + (6.0 - 2.0 * param.x)) / 6.0;
+        return ((12.0 - 9.0 * kparam.x - 6.0 * kparam.y) * x * x * x + (-18.0 + 12.0 * kparam.x + 6.0 * kparam.y) * x * x + (6.0 - 2.0 * kparam.x)) / 6.0;
     else //x < 2.0
-        return ((-param.x - 6.0 * param.y) * x * x * x + (6.0 * param.x + 30.0 * param.y) * x * x + (-12.0 * param.x - 48.0 * param.y) * x + (8.0 * param.x + 24.0 * param.y)) / 6.0;
+        return ((-kparam.x - 6.0 * kparam.y) * x * x * x + (6.0 * kparam.x + 30.0 * kparam.y) * x * x + (-12.0 * kparam.x - 48.0 * kparam.y) * x + (8.0 * kparam.x + 24.0 * kparam.y)) / 6.0;
 }
 
 float bicubic(float x)
 {
     if (x <= 1.0)
-        return (param.x + 2.0) * x * x * x - (param.x + 3.0) * x * x + 1.0;
+        return (kparam.x + 2.0) * x * x * x - (kparam.x + 3.0) * x * x + 1.0;
     else // x < 2.0
-        return param.x * x * x * x - 5.0 * param.x * x * x + 8.0 * param.x * x - 4.0 * param.x;
+        return kparam.x * x * x * x - 5.0 * kparam.x * x * x + 8.0 * kparam.x * x - 4.0 * kparam.x;
 }
 
 float nearest_neighbor(float x)
@@ -215,26 +216,27 @@ float nearest_neighbor(float x)
 
 float get_weight(float x)
 {
+    x = abs(x) / widening_factor;
     if (x < radius) {
-        if (kernel == 1)
+        if (kernel_index == 1)
             return sinc(x) * sinc(x / radius);
-        else if (kernel == 2)
+        else if (kernel_index == 2)
             return sinc(x) * cosine(x / radius);
-        else if (kernel == 3)
+        else if (kernel_index == 3)
             return sinc(x) * hann(x / radius);
-        else if (kernel == 4)
+        else if (kernel_index == 4)
             return sinc(x) * hamming(x / radius);
-        else if (kernel == 5)
+        else if (kernel_index == 5)
             return sinc(x) * blackman(x / radius);
-        else if (kernel == 6)
+        else if (kernel_index == 6)
             return sinc(x) * kaiser(x / radius);
-        else if (kernel == 7)
+        else if (kernel_index == 7)
             return sinc(x) * welch(x / radius);
-        else if (kernel == 8)
+        else if (kernel_index == 8)
             return said(x);
-        else if (kernel == 9)
+        else if (kernel_index == 9)
             return bc_spline(x);
-        else if (kernel == 10)
+        else if (kernel_index == 10)
             return bicubic(x);
         else //11
             return nearest_neighbor(x);
@@ -245,39 +247,39 @@ float get_weight(float x)
 
 float4 sample_2d(float2 uv)
 {
-    uv *= wh;
+    uv *= image_dimensions;
     float2 tc = floor(uv - 0.5) + 0.5; //texel center
     float2 f = uv - tc; //fractional offset
-    float wsum = 0.0; //weight sum
+    float4 c; //sampled pixel color
     float4 csum = 0.0; //weighted color sum
+    float2 w; //weights
+    float wsum = 0.0; //weight sum
     
     //antiringing
+    bool ar = antiringing > 0.0 && widening_factor == 1.0; //enable antiringing
     float4 lo = 1.0;
     float4 hi = 0.0;
     
-    for (float y = 1.0 - radius; y <= radius; y += 1.0) {
-        float2 w; //weights
-        float4 lsum = 0.0; //weighted line sum, one line of pixels
-        w.y = get_weight(abs(y - f.y));
-        
-        for (float x = 1.0 - radius; x <= radius; x += 1.0) {
-            float4 c = tex.Sample(smp, (tc + float2(x, y)) / wh);
-            w.x = get_weight(abs(x - f.x));
-            lsum += w.x * c;
+    float r = ceil(radius * widening_factor); //kerel width = 2 * r
+    for (float y = 1.0 - r; y <= r; y++) {
+        w.y = get_weight(y - f.y);
+        for (float x = 1.0 - r; x <= r; x++) {
+            c = tex.Sample(smp, (tc + float2(x, y)) / image_dimensions);
+            w.x = get_weight(x - f.x);
+            csum += w.x * w.y * c;
             wsum += w.x * w.y;
             
             //antiringing
-            if (antiringing > 0.0 && (x >= 0.0 && y >= 0.0 && x <= 1.0 && y <= 1.0)) {
+            if (ar && x >= 0.0 && y >= 0.0 && x <= 1.0 && y <= 1.0) {
                 lo = min(lo, c);
                 hi = max(hi, c);
             }
         }
-        csum += w.y * lsum;
     }
     csum /= wsum; //normalize color values
     
     //antiringing
-    if (antiringing > 0.0)
+    if (ar)
         csum = lerp(csum, clamp(csum, lo, hi), antiringing);
     
     return csum;
@@ -286,11 +288,11 @@ float4 sample_2d(float2 uv)
 float4 main(Vertex_shader_output input) : SV_Target
 {
     float4 color;
-    if(kernel != 0)
+    if(kernel_index != 0)
         color = sample_2d(input.texcoord);
     else
         color = tex.Sample(smp, input.texcoord);
-    if (cm)
+    if (use_color_managment)
         return float4(color.rgb, color.a);
     else
         return color;

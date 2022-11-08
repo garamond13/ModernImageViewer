@@ -12,17 +12,19 @@ import shared;
 
 //reflects constant buffer cb1 in pixel shader
 struct alignas(16) Cbuffer_cb1_data {
-	float image_width;
-	float image_height;
-	int kernel;
+	
 	BOOL use_color_managment;
 };
 
 struct alignas(16) Cbuffer_cb2_data {
+	float image_width;
+	float image_height;
+	int kernel_index;
 	float radius;
-	float param1;
-	float param2;
+	float kparam1;
+	float kparam2;
 	float antiringing;
+	float widening_factor;
 };
 
 export class Renderer : public Color_managment {
@@ -75,9 +77,6 @@ public:
 		Image::read_image(path);
 
 		//set constant buffer cb1
-		cbuffer_cb1_data.image_width = Image::width;
-		cbuffer_cb1_data.image_height = Image::height;
-		cbuffer_cb1_data.kernel = shared::config.kernel;
 		if (shared::config.color_managment & Config::Color_managment::enable)
 			cbuffer_cb1_data.use_color_managment = 1;
 		else
@@ -85,14 +84,7 @@ public:
 		update_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.Get(), cbuffer_cb1_data);
 		device_context->PSSetConstantBuffers(0, 1, cbuffer_cb1.GetAddressOf());
 
-		//set constant buffer cb2
-		cbuffer_cb2_data.antiringing = shared::config.antiringing;
-		cbuffer_cb2_data.radius = shared::config.radius;
-		cbuffer_cb2_data.param1 = shared::config.param1;
-		cbuffer_cb2_data.param2 = shared::config.param2;
-		update_constant_buffer<Cbuffer_cb2_data>(cbuffer_cb2.Get(), cbuffer_cb2_data);
-		device_context->PSSetConstantBuffers(1, 1, cbuffer_cb2.GetAddressOf());
-
+		update_scaling();
 		Color_managment::create_3dtexture();
 		set_viewport();
 		Image::image_input->close();
@@ -107,6 +99,7 @@ protected:
 			device_context->Flush();
 			swap_chain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
 			create_render_target_view();
+			update_scaling();
 			set_viewport();
 		}
 	}
@@ -182,6 +175,35 @@ private:
 		Microsoft::WRL::ComPtr<ID3D11Texture2D> back_buffer;
 		swap_chain->GetBuffer(0u, IID_PPV_ARGS(back_buffer.ReleaseAndGetAddressOf()));
 		device->CreateRenderTargetView(back_buffer.Get(), nullptr, render_target_view.ReleaseAndGetAddressOf());
+	}
+
+	void update_scaling()
+	{
+		auto scale_factor{ get_scale_factor() };
+		cbuffer_cb2_data.image_width = static_cast<float>(Image::width);
+		cbuffer_cb2_data.image_height = static_cast<float>(Image::height);
+		cbuffer_cb2_data.kernel_index = scale_factor == 1.0f ? 0 : shared::config.kernel;
+		cbuffer_cb2_data.radius = shared::config.radius;
+		cbuffer_cb2_data.kparam1 = shared::config.param1;
+		cbuffer_cb2_data.kparam2 = shared::config.param2;
+		cbuffer_cb2_data.antiringing = shared::config.antiringing;
+		cbuffer_cb2_data.widening_factor = scale_factor < 1.0f ? 1.0f / scale_factor : 1.0f;
+		update_constant_buffer<Cbuffer_cb2_data>(cbuffer_cb2.Get(), cbuffer_cb2_data);
+		device_context->PSSetConstantBuffers(1, 1, cbuffer_cb2.GetAddressOf());
+	}
+
+	float get_scale_factor()
+	{
+		DXGI_SWAP_CHAIN_DESC1 swap_chain_desc1;
+		swap_chain->GetDesc1(&swap_chain_desc1);
+		auto x_ratio{ get_ratio<float>(swap_chain_desc1.Width, Image::width) };
+		auto y_ratio{ get_ratio<float>(swap_chain_desc1.Height, Image::height) };
+		if (x_ratio < 1.0f || y_ratio < 1.0f) //downscale
+			return std::min(x_ratio, y_ratio);
+		else if (x_ratio > 1.0f || y_ratio > 1.0f) //upscale
+			return std::max(x_ratio, y_ratio);
+		else
+			return 1.0f; //no scaling
 	}
 
 	template <typename T>
