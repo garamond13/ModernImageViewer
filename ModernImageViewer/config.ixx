@@ -44,48 +44,19 @@ public:
 	};
 
 	struct Kernel {
-		struct Kernel_type {
-			flag_type kernel;
-			float radius;
-		};
 		//linear == 0;
-		static constexpr Kernel_type lanczos{
-			.kernel{ 1 },
-		};
-		static constexpr Kernel_type cosine{
-			.kernel{ 2 },
-		};
-		static constexpr Kernel_type hann{
-			.kernel{ 3 },
-		};
-		static constexpr Kernel_type hamming{
-			.kernel{ 4 },
-		};
-		static constexpr Kernel_type blackman{
-			.kernel{ 5 },
-		};
-		static constexpr Kernel_type kaiser{
-			.kernel{ 6 },
-		};
-		static constexpr Kernel_type welch{
-			.kernel{ 7 },
-		};
-		static constexpr Kernel_type said{
-			.kernel{ 8 },
-		};
-		static constexpr Kernel_type bc_spline{
-			.kernel{ 9 },
-			.radius{ 2.0 }, //fixed radius
-		};
-		static constexpr Kernel_type bicubic{
-			.kernel{ 10 },
-			.radius{ 2.0 }, //fixed radius
-		};
-		static constexpr Kernel_type nearest_neighbor{
-			.kernel{ 11 },
-			.radius{ 1.0 }, //fixed radius
-		};
-		Kernel_type kernel;
+		static constexpr flag_type lanczos{ 1 };
+		static constexpr flag_type cosine{ 2 };
+		static constexpr flag_type hann{ 3 };
+		static constexpr flag_type hamming{ 4 };
+		static constexpr flag_type blackman{ 5 };
+		static constexpr flag_type kaiser{ 6 };
+		static constexpr flag_type welch{ 7 };
+		static constexpr flag_type said{ 8 };
+		static constexpr flag_type bc_spline{ 9 }; //fixed radius, 2.0
+		static constexpr flag_type bicubic{ 10 }; //fixed radius, 2.0
+		static constexpr flag_type nearest_neighbor{ 11 }; //fixed radius, 1.0
+		Kernel() = delete;
 	};
 
 	void write()
@@ -165,7 +136,7 @@ public:
 		color_managment = Color_managment::enable | Color_managment::intent_perceptual;
 		window_width = 1200;
 		window_height = 900;
-		kernel = Kernel::hann.kernel;
+		kernel = Kernel::hann;
 		radius = 3.0;
 	}
 

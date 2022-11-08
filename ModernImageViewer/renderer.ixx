@@ -183,7 +183,12 @@ private:
 		cbuffer_cb2_data.image_width = static_cast<float>(Image::width);
 		cbuffer_cb2_data.image_height = static_cast<float>(Image::height);
 		cbuffer_cb2_data.kernel_index = scale_factor == 1.0f ? 0 : shared::config.kernel;
-		cbuffer_cb2_data.radius = shared::config.radius;
+		if(shared::config.kernel == Config::Kernel::bc_spline || shared::config.kernel == Config::Kernel::bicubic)
+			cbuffer_cb2_data.radius = 2.0f;
+		else if(shared::config.kernel == Config::Kernel::nearest_neighbor)
+			cbuffer_cb2_data.radius = 1.0f;
+		else
+			cbuffer_cb2_data.radius = shared::config.radius;
 		cbuffer_cb2_data.kparam1 = shared::config.param1;
 		cbuffer_cb2_data.kparam2 = shared::config.param2;
 		cbuffer_cb2_data.antiringing = shared::config.antiringing;

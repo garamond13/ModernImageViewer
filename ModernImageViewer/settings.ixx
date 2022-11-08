@@ -322,37 +322,37 @@ private:
             SendMessageW(dlg_item, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(kernels.at(i)));
 
         //display currently set kernel, the order of WPARAM values is the as in the array above
-        if (kernel == Config::Kernel::lanczos.kernel) {
+        if (kernel == Config::Kernel::lanczos) {
             SendMessageW(dlg_item, CB_SETCURSEL, 0, 0);
         }
-        else if (kernel == Config::Kernel::cosine.kernel) {
+        else if (kernel == Config::Kernel::cosine) {
             SendMessageW(dlg_item, CB_SETCURSEL, 1, 0);
         }
-        else if (kernel == Config::Kernel::hann.kernel) {
+        else if (kernel == Config::Kernel::hann) {
             SendMessageW(dlg_item, CB_SETCURSEL, 2, 0);
         }
-        else if (kernel == Config::Kernel::hamming.kernel) {
+        else if (kernel == Config::Kernel::hamming) {
             SendMessageW(dlg_item, CB_SETCURSEL, 3, 0);
         }
-        else if (kernel == Config::Kernel::blackman.kernel) {
+        else if (kernel == Config::Kernel::blackman) {
             SendMessageW(dlg_item, CB_SETCURSEL, 4, 0);
         }
-        else if (kernel == Config::Kernel::kaiser.kernel) {
+        else if (kernel == Config::Kernel::kaiser) {
             SendMessageW(dlg_item, CB_SETCURSEL, 5, 0);
         }
-        else if (kernel == Config::Kernel::welch.kernel) {
+        else if (kernel == Config::Kernel::welch) {
             SendMessageW(dlg_item, CB_SETCURSEL, 6, 0);
         }
-        else if (kernel == Config::Kernel::said.kernel) {
+        else if (kernel == Config::Kernel::said) {
             SendMessageW(dlg_item, CB_SETCURSEL, 7, 0);
         }
-        else if (kernel == Config::Kernel::bc_spline.kernel) {
+        else if (kernel == Config::Kernel::bc_spline) {
             SendMessageW(dlg_item, CB_SETCURSEL, 8, 0);
         }
-        else if (kernel == Config::Kernel::bicubic.kernel) {
+        else if (kernel == Config::Kernel::bicubic) {
             SendMessageW(dlg_item, CB_SETCURSEL, 9, 0);
         }
-        else if (kernel == Config::Kernel::nearest_neighbor.kernel) {
+        else if (kernel == Config::Kernel::nearest_neighbor) {
             SendMessageW(dlg_item, CB_SETCURSEL, 10, 0);
         }
         else { //linear
@@ -374,37 +374,37 @@ private:
             auto index{ SendMessageW((HWND)lparam, (UINT)CB_GETCURSEL, 0, 0) };
             switch (index) {
             case 0:
-                kernel = Config::Kernel::lanczos.kernel;
+                kernel = Config::Kernel::lanczos;
                 break;
             case 1:
-                kernel = Config::Kernel::cosine.kernel;
+                kernel = Config::Kernel::cosine;
                 break;
             case 2:
-                kernel = Config::Kernel::hann.kernel;
+                kernel = Config::Kernel::hann;
                 break;
             case 3:
-                kernel = Config::Kernel::hamming.kernel;
+                kernel = Config::Kernel::hamming;
                 break;
             case 4:
-                kernel = Config::Kernel::blackman.kernel;
+                kernel = Config::Kernel::blackman;
                 break;
             case 5:
-                kernel = Config::Kernel::kaiser.kernel;
+                kernel = Config::Kernel::kaiser;
                 break;
             case 6:
-                kernel = Config::Kernel::welch.kernel;
+                kernel = Config::Kernel::welch;
                 break;
             case 7:
-                kernel = Config::Kernel::said.kernel;
+                kernel = Config::Kernel::said;
                 break;
             case 8:
-                kernel = Config::Kernel::bc_spline.kernel;
+                kernel = Config::Kernel::bc_spline;
                 break;
             case 9:
-                kernel = Config::Kernel::bicubic.kernel;
+                kernel = Config::Kernel::bicubic;
                 break;
             case 10:
-                kernel = Config::Kernel::nearest_neighbor.kernel;
+                kernel = Config::Kernel::nearest_neighbor;
                 break;
             default:
                 kernel = 0; //linear
