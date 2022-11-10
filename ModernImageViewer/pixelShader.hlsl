@@ -293,7 +293,7 @@ float4 main(Vertex_shader_output input) : SV_Target
     else
         color = tex.Sample(smp, input.texcoord);
     if (use_color_managment)
-        return float4(color.rgb, color.a);
+        return float4(color_transform(color.rgb), color.a);
     else
         return color;
 }
