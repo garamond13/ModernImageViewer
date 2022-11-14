@@ -5,11 +5,11 @@ SamplerState smp : register(s0);
 cbuffer cb1 : register(b0)
 {
     bool use_color_managment; //use color managment
+    float2 axis; //x or y axis, (1, 0) or (0, 1)
 };
 
 cbuffer cb2 : register(b1)
 {
-    float2 image_dimensions; //image width and height
     int kernel_index;
     float radius; //kernel radius
     float2 kparam; //kernel specific parameters, kparam.x == kparam1, kparam.y == kparam2
@@ -31,7 +31,7 @@ struct Vertex_shader_output
 //based on https://www.boost.org/doc/libs/1_54_0/libs/math/doc/html/math_toolkit/bessel/mbessel.html
 float bessel_i0(float x)
 {
-    const float P1[] = {
+    static const float P1[] = {
         -2.2335582639474375249e+15,
         -5.5050369673018427753e+14,
         -3.2940087627407749166e+13,
@@ -48,7 +48,7 @@ float bessel_i0(float x)
         -1.5982226675653184646e-14,
         -5.2487866627945699800e-18,
     };
-    const float Q1[] = {
+    static const float Q1[] = {
         -2.2335582639474375245e+15,
         7.8858692566751002988e+12,
         -1.2207067397808979846e+10,
@@ -143,10 +143,8 @@ float sinc(float x)
 {
     if (x == 0.0)
         return 1.0;
-    else {
-        x *= M_PI;
-        return sin(x) / x;
-    }
+    x *= M_PI;
+    return sin(x) / x;
 }
 
 float cosine(float x)
@@ -218,82 +216,83 @@ float get_weight(float x)
 {
     x = abs(x) / widening_factor;
     if (x < radius) {
-        if (kernel_index == 1)
+        switch(kernel_index) {
+        case 1:
             return sinc(x) * sinc(x / radius);
-        else if (kernel_index == 2)
+        case 2:
             return sinc(x) * cosine(x / radius);
-        else if (kernel_index == 3)
+        case 3:
             return sinc(x) * hann(x / radius);
-        else if (kernel_index == 4)
+        case 4:
             return sinc(x) * hamming(x / radius);
-        else if (kernel_index == 5)
+        case 5:
             return sinc(x) * blackman(x / radius);
-        else if (kernel_index == 6)
+        case 6:
             return sinc(x) * kaiser(x / radius);
-        else if (kernel_index == 7)
+        case 7:
             return sinc(x) * welch(x / radius);
-        else if (kernel_index == 8)
+        case 8:
             return said(x);
-        else if (kernel_index == 9)
+        case 9:
             return bc_spline(x);
-        else if (kernel_index == 10)
+        case 10:
             return bicubic(x);
-        else //11
+        default: //11
             return nearest_neighbor(x);
+        }
     }
-    else
+    else //x >= radius
         return 0.0;
 }
 
-float4 sample_2d(float2 uv)
+//samples one axis (x or y) at a time
+float4 sample_1d(float2 uv)
 {
-    uv *= image_dimensions;
-    float2 tc = floor(uv - 0.5) + 0.5; //texel center
-    float2 f = uv - tc; //fractional offset
-    float4 c; //sampled pixel color
+    float2 dims;
+    tex.GetDimensions(dims.x, dims.y);  
+    float fcoord = dot(frac(uv * dims - 0.5), axis);
+    dims = 1.0 / dims * axis;
+    float2 base = uv - fcoord * dims;
+    float4 color;
     float4 csum = 0.0; //weighted color sum
-    float2 w; //weights
+    float weight;
     float wsum = 0.0; //weight sum
     
     //antiringing
     bool ar = antiringing > 0.0 && widening_factor == 1.0; //enable antiringing
-    float4 lo = 1.0;
-    float4 hi = 0.0;
+    float4 low = 1.0;
+    float4 high = 0.0;
     
-    float r = ceil(radius * widening_factor); //kerel width = 2 * r
-    for (float y = 1.0 - r; y <= r; y++) {
-        w.y = get_weight(y - f.y);
-        for (float x = 1.0 - r; x <= r; x++) {
-            c = tex.Sample(smp, (tc + float2(x, y)) / image_dimensions);
-            w.x = get_weight(x - f.x);
-            csum += w.x * w.y * c;
-            wsum += w.x * w.y;
-            
-            //antiringing
-            if (ar && x >= 0.0 && y >= 0.0 && x <= 1.0 && y <= 1.0) {
-                lo = min(lo, c);
-                hi = max(hi, c);
-            }
+    float N2 = ceil(radius * widening_factor); //number of samples / 2
+    for (float n = 1.0 - N2; n <= N2; n++) {
+        color = tex.Sample(smp, base + dims * n);
+        weight = get_weight(n - fcoord);
+        csum += weight * color;
+        wsum += weight;
+        
+        //antiringing
+        if (ar && n >= 0.0 && n <= 1.0) {
+            low = min(low, color);
+            high = max(high, color);
         }
     }
     csum /= wsum; //normalize color values
     
     //antiringing
     if (ar)
-        csum = lerp(csum, clamp(csum, lo, hi), antiringing);
+        csum = lerp(csum, clamp(csum, low, high), antiringing);
     
     return csum;
 }
 
-float4 main(Vertex_shader_output input) : SV_Target
+float4 main(Vertex_shader_output vs_out) : SV_Target
 {
     float4 color;
     if(kernel_index != 0)
-        color = sample_2d(input.texcoord);
-    else
-        color = tex.Sample(smp, input.texcoord);
+        color = sample_1d(vs_out.texcoord);
+    else //linear
+        color = tex.Sample(smp, vs_out.texcoord);
     if (use_color_managment)
         return float4(color_transform(color.rgb), color.a);
-    else
-        return color;
+    return color;
 }

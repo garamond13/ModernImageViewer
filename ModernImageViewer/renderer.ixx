@@ -14,11 +14,11 @@ import shared;
 struct alignas(16) Cbuffer_cb1_data {
 	
 	BOOL use_color_managment;
+	float axis_x;
+	float axis_y;
 };
 
 struct alignas(16) Cbuffer_cb2_data {
-	float image_width;
-	float image_height;
 	int kernel_index;
 	float radius;
 	float kparam1;
@@ -46,7 +46,15 @@ public:
 		device_context->PSSetShader(pixel_shader.Get(), nullptr, 0);
 
 		//sampler
-		auto sampler_desc{ CD3D11_SAMPLER_DESC(CD3D11_DEFAULT()) };
+		constexpr D3D11_SAMPLER_DESC sampler_desc{
+			.Filter{ D3D11_FILTER_MIN_MAG_MIP_LINEAR },
+			.AddressU{ D3D11_TEXTURE_ADDRESS_CLAMP },
+			.AddressV{ D3D11_TEXTURE_ADDRESS_CLAMP },
+			.AddressW{ D3D11_TEXTURE_ADDRESS_CLAMP },
+			.MaxAnisotropy{ 1 },
+			.ComparisonFunc{ D3D11_COMPARISON_NEVER },
+			.MaxLOD{ D3D11_FLOAT32_MAX },
+		};
 		Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler_state;
 		device->CreateSamplerState(&sampler_desc, sampler_state.ReleaseAndGetAddressOf());
 		device_context->PSSetSamplers(0, 1, sampler_state.GetAddressOf());
@@ -60,6 +68,7 @@ public:
 
 	void draw_frame()
 	{
+		draw_pass1();
 		//initialize clear color with user configured background color
 		static float clear_color[4]{ 0.0f, 0.0f, 0.0f, 1.0f };
 		clear_color[0] = GetRValue(shared::config.background_color) / 255.0f;
@@ -67,9 +76,29 @@ public:
 		clear_color[2] = GetBValue(shared::config.background_color) / 255.0f;
 
 		device_context->ClearRenderTargetView(render_target_view.Get(), clear_color);
+
+		//bind resources
+		device_context->PSSetShaderResources(0, 1, shader_resource_view_pass1.GetAddressOf());
 		device_context->OMSetRenderTargets(1, render_target_view.GetAddressOf(), nullptr);
+		
+		//update constant buffer
+		if (shared::config.color_managment & Config::Color_managment::enable)
+			cbuffer_cb1_data.use_color_managment = 1;
+		else
+			cbuffer_cb1_data.use_color_managment = 0;
+		cbuffer_cb1_data.axis_x = 1.0;
+		cbuffer_cb1_data.axis_y = 0.0;
+		update_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.Get(), cbuffer_cb1_data);
+
+		set_viewport();
 		device_context->Draw(3, 0);
 		swap_chain->Present(1, 0);
+
+		//unbind resources
+		ID3D11ShaderResourceView* shader_resource_view_nulls[1]{};
+		device_context->PSSetShaderResources(0, 1, shader_resource_view_nulls);
+		ID3D11RenderTargetView* render_target_view_nulls[1]{};
+		device_context->OMSetRenderTargets(1, render_target_view_nulls, nullptr);
 	}
 
 	void set_image(const std::filesystem::path& path)
@@ -86,7 +115,6 @@ public:
 
 		update_scaling();
 		Color_managment::create_3dtexture();
-		set_viewport();
 		Image::image_input->close();
 	}
 
@@ -98,22 +126,21 @@ protected:
 			render_target_view.Reset();
 			device_context->Flush();
 			swap_chain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
+			swap_chain->GetDesc1(&swap_chain_desc1);
 			create_render_target_view();
 			update_scaling();
-			set_viewport();
 		}
 	}
 
-	void set_viewport()
+	void set_viewport(float width = 0.0f, float height = 0.0f)
 	{
-		D3D11_VIEWPORT viewport{};
-		if (Image::width && Image::height) {
-			//the swapchain will have a size that matches the window size
-			DXGI_SWAP_CHAIN_DESC1 swap_chain_desc1;
-			swap_chain->GetDesc1(&swap_chain_desc1);
-
+		D3D11_VIEWPORT viewport{
+			.Width{ width },
+			.Height{ height },
+		};
+		if (!viewport.Width && !viewport.Height && Image::width && Image::height) {
 			//maximise the image size inside the window but keep the aspect ratio of the image and center it
-			if (get_ratio<float>( swap_chain_desc1.Width, swap_chain_desc1.Height) > get_ratio<float>(Image::width, Image::height)) {
+			if (get_ratio<float>(swap_chain_desc1.Width, swap_chain_desc1.Height) > get_ratio<float>(Image::width, Image::height)) {
 				viewport.Width = static_cast<float>(Image::width) * get_ratio<float>(swap_chain_desc1.Height, Image::height);
 				viewport.Height = static_cast<float>(swap_chain_desc1.Height);
 
@@ -153,7 +180,7 @@ private:
 		dxgi_output6->GetDesc1(&output_desc1);
 
 		//create swap chain
-		DXGI_SWAP_CHAIN_DESC1 swap_chain_desc1{
+		swap_chain_desc1 = {
 			.Format{ output_desc1.BitsPerColor == 10 ? DXGI_FORMAT_R10G10B10A2_UNORM : DXGI_FORMAT_R8G8B8A8_UNORM },
 			.SampleDesc{
 				.Count{ 1 },
@@ -164,10 +191,10 @@ private:
 			.SwapEffect{ DXGI_SWAP_EFFECT_FLIP_DISCARD },
 		};
 		dxgi_factory2->CreateSwapChainForHwnd(dxgi_device2.Get(), shared::hwnd, &swap_chain_desc1, nullptr, nullptr, swap_chain.ReleaseAndGetAddressOf());
+		swap_chain->GetDesc1(&swap_chain_desc1);
 
 		dxgi_factory2->MakeWindowAssociation(shared::hwnd, DXGI_MWA_NO_ALT_ENTER);
 		create_render_target_view();
-		set_viewport();
 	}
 
 	void create_render_target_view()
@@ -177,11 +204,67 @@ private:
 		device->CreateRenderTargetView(back_buffer.Get(), nullptr, render_target_view.ReleaseAndGetAddressOf());
 	}
 
+	void draw_pass1()
+	{
+		create_pass1_texture();
+
+		//bind resources
+		device_context->PSSetShaderResources(0u, 1, shader_resource_view_image.GetAddressOf());
+		device_context->OMSetRenderTargets(1, render_target_view_pass1.GetAddressOf(), nullptr);
+
+		constexpr float color[4]{ 0.0, 0.0, 0.0, 1.0 };
+		device_context->ClearRenderTargetView(render_target_view_pass1.Get(), color);
+		
+		//update constant
+		cbuffer_cb1_data.use_color_managment = 0;
+		cbuffer_cb1_data.axis_x = 0.0;
+		cbuffer_cb1_data.axis_y = 1.0;
+		update_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.Get(), cbuffer_cb1_data);
+
+		set_viewport(static_cast<float>(Image::width), static_cast<float>(swap_chain_desc1.Height));
+		device_context->Draw(3, 0);
+		
+		//unbind resources
+		ID3D11ShaderResourceView* shader_resource_view_nulls[1]{};
+		device_context->PSSetShaderResources(0, 1, shader_resource_view_nulls);
+		ID3D11RenderTargetView* render_target_view_nulls[1]{};
+		device_context->OMSetRenderTargets(1, render_target_view_nulls, nullptr);
+	}
+
+	void create_pass1_texture()
+	{
+		D3D11_TEXTURE2D_DESC texture2d_desc{
+			.Width{ static_cast<UINT>(Image::width) == 0 ? 1 : static_cast<UINT>(Image::width)},
+			.Height{ swap_chain_desc1.Height },
+			.MipLevels{ 1 },
+			.ArraySize{ 1 },
+			.Format{ DXGI_FORMAT_R32G32B32A32_FLOAT },
+			.SampleDesc{
+				.Count{ 1 },
+			},
+			.Usage{ D3D11_USAGE_DEFAULT },
+			.BindFlags{ D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET },
+		};
+		Microsoft::WRL::ComPtr<ID3D11Texture2D> texture2d;
+		device->CreateTexture2D(&texture2d_desc, nullptr, texture2d.ReleaseAndGetAddressOf());
+		D3D11_RENDER_TARGET_VIEW_DESC render_target_view_desc{
+			.Format{ DXGI_FORMAT_R32G32B32A32_FLOAT },
+			.ViewDimension{ D3D11_RTV_DIMENSION_TEXTURE2D },
+		};
+		device->CreateRenderTargetView(texture2d.Get(), &render_target_view_desc, render_target_view_pass1.ReleaseAndGetAddressOf());
+		D3D11_SHADER_RESOURCE_VIEW_DESC shader_resource_view_desc{
+			.Format{ DXGI_FORMAT_R32G32B32A32_FLOAT },
+			.ViewDimension{ D3D11_SRV_DIMENSION_TEXTURE2D },
+			.Texture2D{
+				.MipLevels{ 1 },
+			},
+		};
+		device->CreateShaderResourceView(texture2d.Get(), &shader_resource_view_desc, shader_resource_view_pass1.ReleaseAndGetAddressOf());
+	}
+
 	void update_scaling()
 	{
 		auto scale_factor{ get_scale_factor() };
-		cbuffer_cb2_data.image_width = static_cast<float>(Image::width);
-		cbuffer_cb2_data.image_height = static_cast<float>(Image::height);
 		cbuffer_cb2_data.kernel_index = scale_factor == 1.0f ? 0 : shared::config.kernel;
 		if(shared::config.kernel == Config::Kernel::bc_spline || shared::config.kernel == Config::Kernel::bicubic)
 			cbuffer_cb2_data.radius = 2.0f;
@@ -199,8 +282,6 @@ private:
 
 	float get_scale_factor()
 	{
-		DXGI_SWAP_CHAIN_DESC1 swap_chain_desc1;
-		swap_chain->GetDesc1(&swap_chain_desc1);
 		auto x_ratio{ get_ratio<float>(swap_chain_desc1.Width, Image::width) };
 		auto y_ratio{ get_ratio<float>(swap_chain_desc1.Height, Image::height) };
 		if (x_ratio < 1.0f || y_ratio < 1.0f) //downscale
@@ -244,4 +325,7 @@ private:
 	Cbuffer_cb1_data cbuffer_cb1_data;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> cbuffer_cb2;
 	Cbuffer_cb2_data cbuffer_cb2_data;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> render_target_view_pass1;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> shader_resource_view_pass1;
+	DXGI_SWAP_CHAIN_DESC1 swap_chain_desc1;
 };

@@ -46,9 +46,7 @@ public:
 		};
 		Microsoft::WRL::ComPtr<ID3D11Texture2D> texture2d;
 		device->CreateTexture2D(&texture2d_desc, &subresource_data, texture2d.ReleaseAndGetAddressOf());
-		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> shader_resource_view;
-		device->CreateShaderResourceView(texture2d.Get(), nullptr, shader_resource_view.ReleaseAndGetAddressOf());
-		device_context->PSSetShaderResources(0u, 1u, shader_resource_view.GetAddressOf());
+		device->CreateShaderResourceView(texture2d.Get(), nullptr, shader_resource_view_image.ReleaseAndGetAddressOf());
 	}
 
 	cmsHPROFILE get_embended_icc_profile()
@@ -62,5 +60,6 @@ public:
 	}
 	int width;
 	int height;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> shader_resource_view_image;
 	std::unique_ptr<OIIO::ImageInput> image_input;
 };
