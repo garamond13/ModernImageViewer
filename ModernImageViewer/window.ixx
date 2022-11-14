@@ -323,7 +323,7 @@ private:
 
         //SHFILEOPSTRUCTW.pFrom must be double null terminated
         wchar_t path_copy[MAX_PATH + 1];
-        wcscpy_s(path_copy, path.c_str());
+        wcscpy(path_copy, path.c_str());
         path_copy[std::char_traits<wchar_t>::length(path_copy) + 1] = '\0';
 
         //sends file to the recycle bin
