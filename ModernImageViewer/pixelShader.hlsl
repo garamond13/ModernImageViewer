@@ -172,7 +172,7 @@ float blackman(float x)
 float kaiser(float x)
 {
     //param.x == beta == pi * alpha
-    return x > 1.0 ? 0.0 : bessel_i0(kparam.x * sqrt(1.0 - x * x)) / bessel_i0(kparam.x);
+    return bessel_i0(kparam.x * sqrt(1.0 - x * x)) / bessel_i0(kparam.x);
 }
 
 float welch(float x)
@@ -194,17 +194,17 @@ float bc_spline(float x)
     //param.x == b
     //param.y == c
     if (x < 1.0)
-        return ((12.0 - 9.0 * kparam.x - 6.0 * kparam.y) * x * x * x + (-18.0 + 12.0 * kparam.x + 6.0 * kparam.y) * x * x + (6.0 - 2.0 * kparam.x)) / 6.0;
+        return kparam.x * ((2.0 - 1.5 * x) * x * x - 1.0 / 3.0) + x * x * ((2.0 - kparam.y) * x + kparam.y - 3.0) + 1.0;
     else //x < 2.0
-        return ((-kparam.x - 6.0 * kparam.y) * x * x * x + (6.0 * kparam.x + 30.0 * kparam.y) * x * x + (-12.0 * kparam.x - 48.0 * kparam.y) * x + (8.0 * kparam.x + 24.0 * kparam.y)) / 6.0;
+        return kparam.x * (x * ((1.0 - 2.0 / 3.0 * x) * x - 2.0) + 4.0 / 3.0) + kparam.y * (x * ((5.0 - x) * x - 8.0) + 4.0);
 }
 
 float bicubic(float x)
 {
     if (x <= 1.0)
-        return (kparam.x + 2.0) * x * x * x - (kparam.x + 3.0) * x * x + 1.0;
+        return x * x * ((kparam.x + 2.0) * x - kparam.x - 3.0) + 1.0;
     else // x < 2.0
-        return kparam.x * x * x * x - 5.0 * kparam.x * x * x + 8.0 * kparam.x * x - 4.0 * kparam.x;
+        return kparam.x * (x * ((x - 5.0) * x + 8.0) - 4.0);
 }
 
 float nearest_neighbor(float x)
