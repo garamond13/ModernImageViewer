@@ -141,7 +141,8 @@ float3 color_transform(float3 rgb)
 
 float sinc(float x)
 {
-    if (x == 0.0)
+    //should be (x == 0), but it can cause unexplainable artifacts
+    if (x < 1e-7)
         return 1.0;
     x *= M_PI;
     return sin(x) / x;
