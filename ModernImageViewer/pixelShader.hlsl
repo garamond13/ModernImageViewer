@@ -26,7 +26,6 @@ struct Vertex_shader_output
 //source corecrt_math_defines.h
 #define M_PI 3.14159265358979323846 //pi
 #define M_PI_2 1.57079632679489661923 //pi/2
-#define M_E 2.71828182845904523536 //e
 
 //based on https://www.boost.org/doc/libs/1_54_0/libs/math/doc/html/math_toolkit/bessel/mbessel.html
 float bessel_i0(float x)
@@ -144,8 +143,7 @@ float sinc(float x)
     //should be (x == 0), but it can cause unexplainable artifacts
     if (x < 1e-7)
         return 1.0;
-    x *= M_PI;
-    return sin(x) / x;
+    return sin(M_PI * x) / (M_PI * x);
 }
 
 float cosine(float x)
@@ -166,13 +164,12 @@ float hamming(float x)
 float blackman(float x)
 {
     //precalculated for alpha = 0.16
-    x *= M_PI;
-    return 0.42 + 0.5 * cos(x) + 0.08 * cos(2.0 * x);
+    return 0.42 + 0.5 * cos(M_PI * x) + 0.08 * cos(2.0 * M_PI * x);
 }
 
 float kaiser(float x)
 {
-    //param.x == beta == pi * alpha
+    //kparam.x == beta == pi * alpha
     return bessel_i0(kparam.x * sqrt(1.0 - x * x)) / bessel_i0(kparam.x);
 }
 
@@ -184,28 +181,28 @@ float welch(float x)
 //source https://www.hpl.hp.com/techreports/2007/HPL-2007-179.pdf
 float said(float x)
 {
-    //param.x == chi
-    //param.y == eta
-    float extracted = M_PI * kparam.x * x / (2.0 - kparam.y);
-    return sinc(x) * cosh(sqrt(2.0 * kparam.y) * extracted) * pow(M_E, -(extracted * extracted));
+    //kparam.x == chi
+    //kparam.y == eta
+    return sinc(x) * cosh(sqrt(2.0 * kparam.y) * M_PI * kparam.x * x / (2.0 - kparam.y)) * exp(-((M_PI * kparam.x * x / (2.0 - kparam.y)) * (M_PI * kparam.x * x / (2.0 - kparam.y))));
 }
 
 float bc_spline(float x)
 {
-    //param.x == b
-    //param.y == c
+    //kparam.x == b
+    //kparam.y == c
     if (x < 1.0)
-        return kparam.x * ((2.0 - 1.5 * x) * x * x - 1.0 / 3.0) + x * x * ((2.0 - kparam.y) * x + kparam.y - 3.0) + 1.0;
+        return ((12.0 - 9.0 * kparam.x - 6.0 * kparam.y) * x * x * x + (-18.0 + 12.0 * kparam.x + 6.0 * kparam.y) * x * x + (6.0 - 2.0 * kparam.x)) / 6.0;
     else //x < 2.0
-        return kparam.x * (x * ((1.0 - 2.0 / 3.0 * x) * x - 2.0) + 4.0 / 3.0) + kparam.y * (x * ((5.0 - x) * x - 8.0) + 4.0);
+        return ((-kparam.x - 6.0 * kparam.y) * x * x * x + (6.0 * kparam.x + 30.0 * kparam.y) * x * x + (-12.0 * kparam.x - 48.0 * kparam.y) * x + (8.0 * kparam.x + 24.0 * kparam.y)) / 6.0;
 }
 
 float bicubic(float x)
 {
-    if (x <= 1.0)
-        return x * x * ((kparam.x + 2.0) * x - kparam.x - 3.0) + 1.0;
+    //kparam.x == a
+    if (x < 1.0)
+        return (kparam.x + 2.0) * x * x * x - (kparam.x + 3.0) * x * x + 1.0;
     else // x < 2.0
-        return kparam.x * (x * ((x - 5.0) * x + 8.0) - 4.0);
+        return kparam.x * x * x * x - 5.0 * kparam.x * x * x + 8.0 * kparam.x * x - 4.0 * kparam.x;
 }
 
 float nearest_neighbor(float x)
