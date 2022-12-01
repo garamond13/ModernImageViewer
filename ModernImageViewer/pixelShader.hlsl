@@ -14,7 +14,7 @@ cbuffer cb2 : register(b1)
     float radius; //kernel radius
     float2 kparam; //kernel specific parameters, kparam.x == kparam1, kparam.y == kparam2
     float antiringing; //antiringing strenght
-    float widening_factor; //if downsampling, > 1.0 else == 1.0
+    float scale; //if downsampling, > 1.0 else == 1.0
 };
 
 struct Vertex_shader_output
@@ -212,7 +212,6 @@ float nearest_neighbor(float x)
 
 float get_weight(float x)
 {
-    x = abs(x) / widening_factor;
     if (x < radius) {
         switch(kernel_index) {
         case 1:
@@ -257,19 +256,19 @@ float4 sample_1d(float2 uv)
     float wsum = 0.0; //weight sum
     
     //antiringing
-    bool ar = antiringing > 0.0 && widening_factor == 1.0; //enable antiringing
+    bool ar = antiringing > 0.0 && scale == 1.0; //enable antiringing
     float4 low = 1.0;
     float4 high = 0.0;
     
-    float N2 = ceil(radius * widening_factor); //number of samples / 2
-    for (float n = 1.0 - N2; n <= N2; n++) {
-        color = tex.Sample(smp, base + dims * n);
-        weight = get_weight(n - fcoord);
-        csum += weight * color;
+    float sampling_radius = ceil(radius * scale); //number of samples / 2
+    for (float i = 1.0 - sampling_radius; i <= sampling_radius; ++i) {
+        color = tex.SampleLevel(smp, base + dims * i, 0.0);
+        weight = get_weight(abs((i - fcoord) / scale));
+        csum += color * weight;
         wsum += weight;
         
         //antiringing
-        if (ar && n >= 0.0 && n <= 1.0) {
+        if (ar && i >= 0.0 && i <= 1.0) {
             low = min(low, color);
             high = max(high, color);
         }
@@ -289,7 +288,7 @@ float4 main(Vertex_shader_output vs_out) : SV_Target
     if(kernel_index != 0)
         color = sample_1d(vs_out.texcoord);
     else //linear
-        color = tex.Sample(smp, vs_out.texcoord);
+        color = tex.SampleLevel(smp, vs_out.texcoord, 0.0);
     if (use_color_managment)
         return float4(color_transform(color.rgb), color.a);
     return color;
