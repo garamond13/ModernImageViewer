@@ -93,12 +93,7 @@ public:
 		set_viewport();
 		device_context->Draw(3, 0);
 		swap_chain->Present(1, 0);
-
-		//unbind resources
-		ID3D11ShaderResourceView* shader_resource_view_nulls[1]{};
-		device_context->PSSetShaderResources(0, 1, shader_resource_view_nulls);
-		ID3D11RenderTargetView* render_target_view_nulls[1]{};
-		device_context->OMSetRenderTargets(1, render_target_view_nulls, nullptr);
+		unbind_resources();
 	}
 
 	void set_image(const std::filesystem::path& path)
@@ -159,6 +154,14 @@ protected:
 	}
 
 private:
+	void unbind_resources()
+	{
+		ID3D11ShaderResourceView* shader_resource_view_nulls[1]{};
+		device_context->PSSetShaderResources(0, 1, shader_resource_view_nulls);
+		ID3D11RenderTargetView* render_target_view_nulls[1]{};
+		device_context->OMSetRenderTargets(1, render_target_view_nulls, nullptr);
+	}
+
 	void create_swap_chain()
 	{
 		//query interfaces
@@ -223,12 +226,7 @@ private:
 
 		set_viewport(static_cast<float>(Image::width), static_cast<float>(swap_chain_desc1.Height));
 		device_context->Draw(3, 0);
-		
-		//unbind resources
-		ID3D11ShaderResourceView* shader_resource_view_nulls[1]{};
-		device_context->PSSetShaderResources(0, 1, shader_resource_view_nulls);
-		ID3D11RenderTargetView* render_target_view_nulls[1]{};
-		device_context->OMSetRenderTargets(1, render_target_view_nulls, nullptr);
+		unbind_resources();
 	}
 
 	void create_pass1_texture()
