@@ -68,32 +68,34 @@ public:
 
 	void draw_frame()
 	{
-		draw_pass1();
-		//initialize clear color with user configured background color
-		static float clear_color[4]{ 0.0f, 0.0f, 0.0f, 1.0f };
-		clear_color[0] = GetRValue(shared::config.background_color) / 255.0f;
-		clear_color[1] = GetGValue(shared::config.background_color) / 255.0f;
-		clear_color[2] = GetBValue(shared::config.background_color) / 255.0f;
+		if (image_input) {
+			draw_pass1();
+			//initialize clear color with user configured background color
+			static float clear_color[4]{ 0.0f, 0.0f, 0.0f, 1.0f };
+			clear_color[0] = GetRValue(shared::config.background_color) / 255.0f;
+			clear_color[1] = GetGValue(shared::config.background_color) / 255.0f;
+			clear_color[2] = GetBValue(shared::config.background_color) / 255.0f;
 
-		device_context->ClearRenderTargetView(render_target_view.Get(), clear_color);
+			device_context->ClearRenderTargetView(render_target_view.Get(), clear_color);
 
-		//bind resources
-		device_context->PSSetShaderResources(0, 1, shader_resource_view_pass1.GetAddressOf());
-		device_context->OMSetRenderTargets(1, render_target_view.GetAddressOf(), nullptr);
-		
-		//update constant buffer
-		if (shared::config.color_managment & Config::Color_managment::enable)
-			cbuffer_cb1_data.use_color_managment = 1;
-		else
-			cbuffer_cb1_data.use_color_managment = 0;
-		cbuffer_cb1_data.axis_x = 1.0;
-		cbuffer_cb1_data.axis_y = 0.0;
-		update_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.Get(), cbuffer_cb1_data);
+			//bind resources
+			device_context->PSSetShaderResources(0, 1, shader_resource_view_pass1.GetAddressOf());
+			device_context->OMSetRenderTargets(1, render_target_view.GetAddressOf(), nullptr);
 
-		set_viewport();
-		device_context->Draw(3, 0);
-		swap_chain->Present(1, 0);
-		unbind_resources();
+			//update constant buffer
+			if (shared::config.color_managment & Config::Color_managment::enable)
+				cbuffer_cb1_data.use_color_managment = 1;
+			else
+				cbuffer_cb1_data.use_color_managment = 0;
+			cbuffer_cb1_data.axis_x = 1.0;
+			cbuffer_cb1_data.axis_y = 0.0;
+			update_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.Get(), cbuffer_cb1_data);
+
+			set_viewport();
+			device_context->Draw(3, 0);
+			swap_chain->Present(1, 0);
+			unbind_resources();
+		}
 	}
 
 	void set_image(const std::filesystem::path& path)
