@@ -27,6 +27,9 @@ struct Vertex_shader_output
 #define M_PI 3.14159265358979323846 //pi
 #define M_PI_2 1.57079632679489661923 //pi/2
 
+//source float.h
+#define FLT_EPSILON 1.192092896e-07 // smallest such that 1.0+FLT_EPSILON != 1.0
+
 //based on https://www.boost.org/doc/libs/1_54_0/libs/math/doc/html/math_toolkit/bessel/mbessel.html
 float bessel_i0(float x)
 {
@@ -140,10 +143,10 @@ float3 color_transform(float3 rgb)
 
 float sinc(float x)
 {
-    //should be (x == 0), but it can cause unexplainable artifacts
-    if (x < 1e-7)
-        return 1.0;
-    return sin(M_PI * x) / (M_PI * x);
+    //should be (x == 0.0), but it can cause unexplainable artifacts
+    if (x < FLT_EPSILON)
+        return M_PI;
+    return sin(M_PI * x) / x;
 }
 
 float cosine(float x)
@@ -170,7 +173,7 @@ float blackman(float x)
 float kaiser(float x)
 {
     //kparam.x == beta == pi * alpha
-    return bessel_i0(kparam.x * sqrt(1.0 - x * x)) / bessel_i0(kparam.x);
+    return bessel_i0(kparam.x * sqrt(1.0 - x * x));
 }
 
 float welch(float x)
@@ -183,7 +186,7 @@ float said(float x)
 {
     //kparam.x == chi
     //kparam.y == eta
-    return sinc(x) * cosh(sqrt(2.0 * kparam.y) * M_PI * kparam.x * x / (2.0 - kparam.y)) * exp(-((M_PI * kparam.x * x / (2.0 - kparam.y)) * (M_PI * kparam.x * x / (2.0 - kparam.y))));
+    return sinc(x) * cosh(sqrt(2.0 * kparam.y) * M_PI * kparam.x / (2.0 - kparam.y) * x) * exp(-(M_PI * M_PI * kparam.x * kparam.x / ((2.0 - kparam.y) * (2.0 - kparam.y)) * x * x));
 }
 
 float bc_spline(float x)
@@ -191,9 +194,9 @@ float bc_spline(float x)
     //kparam.x == b
     //kparam.y == c
     if (x < 1.0)
-        return ((12.0 - 9.0 * kparam.x - 6.0 * kparam.y) * x * x * x + (-18.0 + 12.0 * kparam.x + 6.0 * kparam.y) * x * x + (6.0 - 2.0 * kparam.x)) / 6.0;
+        return (12.0 - 9.0 * kparam.x - 6.0 * kparam.y) * x * x * x + (-18.0 + 12.0 * kparam.x + 6.0 * kparam.y) * x * x + (6.0 - 2.0 * kparam.x);
     else //x < 2.0
-        return ((-kparam.x - 6.0 * kparam.y) * x * x * x + (6.0 * kparam.x + 30.0 * kparam.y) * x * x + (-12.0 * kparam.x - 48.0 * kparam.y) * x + (8.0 * kparam.x + 24.0 * kparam.y)) / 6.0;
+        return (-kparam.x - 6.0 * kparam.y) * x * x * x + (6.0 * kparam.x + 30.0 * kparam.y) * x * x + (-12.0 * kparam.x - 48.0 * kparam.y) * x + (8.0 * kparam.x + 24.0 * kparam.y);
 }
 
 float bicubic(float x)
