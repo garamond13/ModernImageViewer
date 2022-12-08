@@ -69,7 +69,14 @@ public:
 	void draw_frame()
 	{
 		if (image_input) {
-			draw_pass1();
+			//update constant buffer
+			cbuffer_cb1_data.use_color_managment = 0;
+			cbuffer_cb1_data.axis_x = 0.0;
+			cbuffer_cb1_data.axis_y = 1.0;
+			update_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.Get(), cbuffer_cb1_data);
+
+			draw_pass(Image::width, swap_chain_desc1.Height, shader_resource_view_image.GetAddressOf(), shader_resource_view_pass1.ReleaseAndGetAddressOf(), render_target_view_pass1.ReleaseAndGetAddressOf(), PIXEL_SHADER, sizeof(PIXEL_SHADER));
+
 			//initialize clear color with user configured background color
 			static float clear_color[4]{ 0.0f, 0.0f, 0.0f, 1.0f };
 			clear_color[0] = GetRValue(shared::config.background_color) / 255.0f;
@@ -209,33 +216,32 @@ private:
 		device->CreateRenderTargetView(back_buffer.Get(), nullptr, render_target_view.ReleaseAndGetAddressOf());
 	}
 
-	void draw_pass1()
+	void draw_pass(UINT width, UINT height, ID3D11ShaderResourceView** srv_bind, ID3D11ShaderResourceView** srv, ID3D11RenderTargetView** rtv, const BYTE* shader, size_t shader_size)
 	{
-		create_pass1_texture();
+		create_pass(width, height, srv, rtv);
+
+		//pixel shader
+		Microsoft::WRL::ComPtr<ID3D11PixelShader> pixel_shader;
+		device->CreatePixelShader(shader, shader_size, nullptr, pixel_shader.ReleaseAndGetAddressOf());
+		device_context->PSSetShader(pixel_shader.Get(), nullptr, 0);
 
 		//bind resources
-		device_context->PSSetShaderResources(0u, 1, shader_resource_view_image.GetAddressOf());
-		device_context->OMSetRenderTargets(1, render_target_view_pass1.GetAddressOf(), nullptr);
+		device_context->PSSetShaderResources(0u, 1, srv_bind);
+		device_context->OMSetRenderTargets(1, rtv, nullptr);
 
 		constexpr float color[4]{ 0.0, 0.0, 0.0, 1.0 };
-		device_context->ClearRenderTargetView(render_target_view_pass1.Get(), color);
-		
-		//update constant
-		cbuffer_cb1_data.use_color_managment = 0;
-		cbuffer_cb1_data.axis_x = 0.0;
-		cbuffer_cb1_data.axis_y = 1.0;
-		update_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.Get(), cbuffer_cb1_data);
-
-		set_viewport(static_cast<float>(Image::width), static_cast<float>(swap_chain_desc1.Height));
+		device_context->ClearRenderTargetView(*rtv, color);
+		set_viewport(width, height);
 		device_context->Draw(3, 0);
 		unbind_resources();
 	}
 
-	void create_pass1_texture()
+	void create_pass(UINT width, UINT height, ID3D11ShaderResourceView** srv, ID3D11RenderTargetView** rtv)
 	{
+		//texture
 		D3D11_TEXTURE2D_DESC texture2d_desc{
-			.Width{ static_cast<UINT>(Image::width) == 0 ? 1 : static_cast<UINT>(Image::width)},
-			.Height{ swap_chain_desc1.Height },
+			.Width{ width },
+			.Height{ height },
 			.MipLevels{ 1 },
 			.ArraySize{ 1 },
 			.Format{ DXGI_FORMAT_R32G32B32A32_FLOAT },
@@ -247,11 +253,15 @@ private:
 		};
 		Microsoft::WRL::ComPtr<ID3D11Texture2D> texture2d;
 		device->CreateTexture2D(&texture2d_desc, nullptr, texture2d.ReleaseAndGetAddressOf());
+		
+		//render target view
 		D3D11_RENDER_TARGET_VIEW_DESC render_target_view_desc{
 			.Format{ DXGI_FORMAT_R32G32B32A32_FLOAT },
 			.ViewDimension{ D3D11_RTV_DIMENSION_TEXTURE2D },
 		};
-		device->CreateRenderTargetView(texture2d.Get(), &render_target_view_desc, render_target_view_pass1.ReleaseAndGetAddressOf());
+		device->CreateRenderTargetView(texture2d.Get(), &render_target_view_desc, rtv);
+		
+		//shader resource view
 		D3D11_SHADER_RESOURCE_VIEW_DESC shader_resource_view_desc{
 			.Format{ DXGI_FORMAT_R32G32B32A32_FLOAT },
 			.ViewDimension{ D3D11_SRV_DIMENSION_TEXTURE2D },
@@ -259,7 +269,7 @@ private:
 				.MipLevels{ 1 },
 			},
 		};
-		device->CreateShaderResourceView(texture2d.Get(), &shader_resource_view_desc, shader_resource_view_pass1.ReleaseAndGetAddressOf());
+		device->CreateShaderResourceView(texture2d.Get(), &shader_resource_view_desc, srv);
 	}
 
 	void update_scaling()
