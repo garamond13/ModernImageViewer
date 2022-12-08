@@ -2,6 +2,8 @@ module;
 #include "framework.h"
 #include "vertexShader.h"
 #include "pixelShader.h"
+#include "resample.h"
+#include "sample.h"
 
 export module renderer;
 import image;
@@ -39,11 +41,6 @@ public:
 		Microsoft::WRL::ComPtr<ID3D11VertexShader> vertex_shader;
 		device->CreateVertexShader(VERTEX_SHADER, sizeof(VERTEX_SHADER), nullptr, vertex_shader.ReleaseAndGetAddressOf());
 		device_context->VSSetShader(vertex_shader.Get(), nullptr, 0);
-		
-		//pixel shader
-		Microsoft::WRL::ComPtr<ID3D11PixelShader> pixel_shader;
-		device->CreatePixelShader(PIXEL_SHADER, sizeof(PIXEL_SHADER), nullptr, pixel_shader.ReleaseAndGetAddressOf());
-		device_context->PSSetShader(pixel_shader.Get(), nullptr, 0);
 
 		//sampler
 		constexpr D3D11_SAMPLER_DESC sampler_desc{
@@ -75,7 +72,19 @@ public:
 			cbuffer_cb1_data.axis_y = 1.0;
 			update_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.Get(), cbuffer_cb1_data);
 
-			draw_pass(Image::width, swap_chain_desc1.Height, shader_resource_view_image.GetAddressOf(), shader_resource_view_pass1.ReleaseAndGetAddressOf(), render_target_view_pass1.ReleaseAndGetAddressOf(), PIXEL_SHADER, sizeof(PIXEL_SHADER));
+			draw_pass(Image::width, swap_chain_desc1.Height, shader_resource_view_image.GetAddressOf(), shader_resource_view_pass1.ReleaseAndGetAddressOf(), render_target_view_pass1.ReleaseAndGetAddressOf(), RESAMPLE, sizeof(RESAMPLE));
+
+			//update constant buffer
+			cbuffer_cb1_data.axis_x = 1.0;
+			cbuffer_cb1_data.axis_y = 0.0;
+			update_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.Get(), cbuffer_cb1_data);
+
+			draw_pass(swap_chain_desc1.Width, swap_chain_desc1.Height, shader_resource_view_pass1.GetAddressOf(), shader_resource_view_pass2.ReleaseAndGetAddressOf(), render_target_view_pass2.ReleaseAndGetAddressOf(), RESAMPLE, sizeof(RESAMPLE));
+
+			//pixel shader
+			Microsoft::WRL::ComPtr<ID3D11PixelShader> pixel_shader;
+			device->CreatePixelShader(SAMPLE, sizeof(SAMPLE), nullptr, pixel_shader.ReleaseAndGetAddressOf());
+			device_context->PSSetShader(pixel_shader.Get(), nullptr, 0);
 
 			//initialize clear color with user configured background color
 			static float clear_color[4]{ 0.0f, 0.0f, 0.0f, 1.0f };
@@ -86,7 +95,7 @@ public:
 			device_context->ClearRenderTargetView(render_target_view.Get(), clear_color);
 
 			//bind resources
-			device_context->PSSetShaderResources(0, 1, shader_resource_view_pass1.GetAddressOf());
+			device_context->PSSetShaderResources(0, 1, shader_resource_view_pass2.GetAddressOf());
 			device_context->OMSetRenderTargets(1, render_target_view.GetAddressOf(), nullptr);
 
 			//update constant buffer
@@ -94,8 +103,6 @@ public:
 				cbuffer_cb1_data.use_color_managment = 1;
 			else
 				cbuffer_cb1_data.use_color_managment = 0;
-			cbuffer_cb1_data.axis_x = 1.0;
-			cbuffer_cb1_data.axis_y = 0.0;
 			update_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.Get(), cbuffer_cb1_data);
 
 			set_viewport();
@@ -337,5 +344,7 @@ private:
 	Cbuffer_cb2_data cbuffer_cb2_data;
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> render_target_view_pass1;
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> shader_resource_view_pass1;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> render_target_view_pass2;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> shader_resource_view_pass2;
 	DXGI_SWAP_CHAIN_DESC1 swap_chain_desc1;
 };

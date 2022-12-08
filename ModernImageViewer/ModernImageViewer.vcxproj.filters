@@ -71,7 +71,10 @@
     <FxCompile Include="vertexShader.hlsl">
       <Filter>Resource Files</Filter>
     </FxCompile>
-    <FxCompile Include="pixelShader.hlsl">
+    <FxCompile Include="resample.hlsl">
+      <Filter>Resource Files</Filter>
+    </FxCompile>
+    <FxCompile Include="sample.hlsl">
       <Filter>Resource Files</Filter>
     </FxCompile>
   </ItemGroup>
