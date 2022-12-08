@@ -22,13 +22,110 @@ struct Vertex_shader_output
     float2 texcoord : TEXCOORD; //uv
 };
 
-
 //source corecrt_math_defines.h
 #define M_PI 3.14159265358979323846 //pi
 #define M_PI_2 1.57079632679489661923 //pi/2
 
 //source float.h
 #define FLT_EPSILON 1.192092896e-07 // smallest such that 1.0+FLT_EPSILON != 1.0
+
+float bessel_i0(float x);
+
+//should be (x == 0.0), but it can cause unexplainable artifacts
+#define sinc(x) (x < FLT_EPSILON ? M_PI : sin(M_PI * x) / x)
+
+#define cosine(x) (cos(M_PI_2 * x))
+
+#define hann(x) (0.5 + 0.5 * cos(M_PI * x))
+
+#define hamming(x) (0.54 + 0.46 * cos(M_PI * x))
+
+#define blackman(x) (0.42 + 0.5 * cos(M_PI * x) + 0.08 * cos(2.0 * M_PI * x))
+
+#define kaiser(x, beta) (bessel_i0(beta * sqrt(1.0 - x * x)))
+
+#define welch(x) (1.0 - x * x)
+
+//source https://www.hpl.hp.com/techreports/2007/HPL-2007-179.pdf
+#define said(x, chi, eta) (sinc(x) * cosh(sqrt(2.0 * eta) * M_PI * chi / (2.0 - eta) * x) * exp(-(M_PI * M_PI * chi * chi / ((2.0 - eta) * (2.0 - eta)) * x * x)))
+
+#define bc_spline(x, b, c) (x < 1.0 ? (12.0 - 9.0 * b - 6.0 * c) * x * x * x + (-18.0 + 12.0 * b + 6.0 * c) * x * x + (6.0 - 2.0 * b) : (-b - 6.0 * c) * x * x * x + (6.0 * b + 30.0 * c) * x * x + (-12.0 * b - 48.0 * c) * x + (8.0 * b + 24.0 * c))
+
+#define bicubic(x, alpha) (x < 1.0 ? (alpha + 2.0) * x * x * x - (alpha + 3.0) * x * x + 1.0 : alpha * x * x * x - 5.0 * alpha * x * x + 8.0 * alpha * x - 4.0 * alpha)
+
+#define nearest_neighbor(x) (x < 0.5 ? 1.0 : 0.0)
+
+float get_weight(float x)
+{
+    if (x < radius) {
+        switch(kernel_index) {
+        case 1:
+            return sinc(x) * sinc(x / radius);
+        case 2:
+            return sinc(x) * cosine(x / radius);
+        case 3:
+            return sinc(x) * hann(x / radius);
+        case 4:
+            return sinc(x) * hamming(x / radius);
+        case 5:
+            return sinc(x) * blackman(x / radius);
+        case 6:
+            return sinc(x) * kaiser(x / radius, kparam.x);
+        case 7:
+            return sinc(x) * welch(x / radius);
+        case 8:
+            return said(x, kparam.x, kparam.y);
+        case 9:
+            return bc_spline(x, kparam.x, kparam.y);
+        case 10:
+            return bicubic(x, kparam.x);
+        default: //11
+            return nearest_neighbor(x);
+        }
+    }
+    else //x >= radius
+        return 0.0;
+}
+
+//samples one axis (x or y) at a time
+float4 main(Vertex_shader_output vs_out) : SV_Target
+{
+    float2 dims;
+    tex.GetDimensions(dims.x, dims.y);  
+    float fcoord = dot(frac(vs_out.texcoord * dims - 0.5), axis);
+    dims = 1.0 / dims * axis;
+    float2 base = vs_out.texcoord - fcoord * dims;
+    float4 color;
+    float4 csum = 0.0; //weighted color sum
+    float weight;
+    float wsum = 0.0; //weight sum
+    
+    //antiringing
+    bool ar = antiringing > 0.0 && scale == 1.0; //enable antiringing
+    float4 low = 1.0;
+    float4 high = 0.0;
+    
+    float sampling_radius = ceil(radius * scale); //number of samples / 2
+    for (float i = 1.0 - sampling_radius; i <= sampling_radius; ++i) {
+        color = tex.SampleLevel(smp, base + dims * i, 0.0);
+        weight = get_weight(abs((i - fcoord) / scale));
+        csum += color * weight;
+        wsum += weight;
+        
+        //antiringing
+        if (ar && i >= 0.0 && i <= 1.0) {
+            low = min(low, color);
+            high = max(high, color);
+        }
+    }
+    csum /= wsum; //normalize color values
+    
+    //antiringing
+    if (ar)
+        csum = lerp(csum, clamp(csum, low, high), antiringing);
+    
+    return csum;
+}
 
 //based on https://www.boost.org/doc/libs/1_54_0/libs/math/doc/html/math_toolkit/bessel/mbessel.html
 float bessel_i0(float x)
@@ -109,148 +206,4 @@ float bessel_i0(float x)
         }
         return exp(x) / sqrt(x) * p2sum / q2sum;
     }
-}
-
-float sinc(float x)
-{
-    //should be (x == 0.0), but it can cause unexplainable artifacts
-    if (x < FLT_EPSILON)
-        return M_PI;
-    return sin(M_PI * x) / x;
-}
-
-float cosine(float x)
-{
-    return cos(M_PI_2 * x);
-}
-
-float hann(float x)
-{
-    return 0.5 + 0.5 * cos(M_PI * x);
-}
-
-float hamming(float x)
-{
-    return 0.54 + 0.46 * cos(M_PI * x);
-}
-
-float blackman(float x)
-{
-    //precalculated for alpha = 0.16
-    return 0.42 + 0.5 * cos(M_PI * x) + 0.08 * cos(2.0 * M_PI * x);
-}
-
-float kaiser(float x)
-{
-    //kparam.x == beta == pi * alpha
-    return bessel_i0(kparam.x * sqrt(1.0 - x * x));
-}
-
-float welch(float x)
-{
-    return 1.0 - x * x;
-}
-
-//source https://www.hpl.hp.com/techreports/2007/HPL-2007-179.pdf
-float said(float x)
-{
-    //kparam.x == chi
-    //kparam.y == eta
-    return sinc(x) * cosh(sqrt(2.0 * kparam.y) * M_PI * kparam.x / (2.0 - kparam.y) * x) * exp(-(M_PI * M_PI * kparam.x * kparam.x / ((2.0 - kparam.y) * (2.0 - kparam.y)) * x * x));
-}
-
-float bc_spline(float x)
-{
-    //kparam.x == b
-    //kparam.y == c
-    if (x < 1.0)
-        return (12.0 - 9.0 * kparam.x - 6.0 * kparam.y) * x * x * x + (-18.0 + 12.0 * kparam.x + 6.0 * kparam.y) * x * x + (6.0 - 2.0 * kparam.x);
-    else //x < 2.0
-        return (-kparam.x - 6.0 * kparam.y) * x * x * x + (6.0 * kparam.x + 30.0 * kparam.y) * x * x + (-12.0 * kparam.x - 48.0 * kparam.y) * x + (8.0 * kparam.x + 24.0 * kparam.y);
-}
-
-float bicubic(float x)
-{
-    //kparam.x == a
-    if (x < 1.0)
-        return (kparam.x + 2.0) * x * x * x - (kparam.x + 3.0) * x * x + 1.0;
-    else // x < 2.0
-        return kparam.x * x * x * x - 5.0 * kparam.x * x * x + 8.0 * kparam.x * x - 4.0 * kparam.x;
-}
-
-float nearest_neighbor(float x)
-{
-    return x < 0.5 ? 1.0 : 0.0;
-}
-
-float get_weight(float x)
-{
-    if (x < radius) {
-        switch(kernel_index) {
-        case 1:
-            return sinc(x) * sinc(x / radius);
-        case 2:
-            return sinc(x) * cosine(x / radius);
-        case 3:
-            return sinc(x) * hann(x / radius);
-        case 4:
-            return sinc(x) * hamming(x / radius);
-        case 5:
-            return sinc(x) * blackman(x / radius);
-        case 6:
-            return sinc(x) * kaiser(x / radius);
-        case 7:
-            return sinc(x) * welch(x / radius);
-        case 8:
-            return said(x);
-        case 9:
-            return bc_spline(x);
-        case 10:
-            return bicubic(x);
-        default: //11
-            return nearest_neighbor(x);
-        }
-    }
-    else //x >= radius
-        return 0.0;
-}
-
-//samples one axis (x or y) at a time
-float4 main(Vertex_shader_output vs_out) : SV_Target
-{
-    float2 dims;
-    tex.GetDimensions(dims.x, dims.y);  
-    float fcoord = dot(frac(vs_out.texcoord * dims - 0.5), axis);
-    dims = 1.0 / dims * axis;
-    float2 base = vs_out.texcoord - fcoord * dims;
-    float4 color;
-    float4 csum = 0.0; //weighted color sum
-    float weight;
-    float wsum = 0.0; //weight sum
-    
-    //antiringing
-    bool ar = antiringing > 0.0 && scale == 1.0; //enable antiringing
-    float4 low = 1.0;
-    float4 high = 0.0;
-    
-    float sampling_radius = ceil(radius * scale); //number of samples / 2
-    for (float i = 1.0 - sampling_radius; i <= sampling_radius; ++i) {
-        color = tex.SampleLevel(smp, base + dims * i, 0.0);
-        weight = get_weight(abs((i - fcoord) / scale));
-        csum += color * weight;
-        wsum += weight;
-        
-        //antiringing
-        if (ar && i >= 0.0 && i <= 1.0) {
-            low = min(low, color);
-            high = max(high, color);
-        }
-    }
-    csum /= wsum; //normalize color values
-    
-    //antiringing
-    if (ar)
-        csum = lerp(csum, clamp(csum, low, high), antiringing);
-    
-    return csum;
 }
