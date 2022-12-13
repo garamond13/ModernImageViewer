@@ -22,6 +22,8 @@ struct alignas(16) Cbuffer_cb1_data {
 struct alignas(16) Cbuffer_cb2_data {
 	int kernel_index;
 	float radius;
+	float blur;
+	float padding; //not used in shader
 	float kparam1;
 	float kparam2;
 	float antiringing;
@@ -288,6 +290,7 @@ private:
 			cbuffer_cb2_data.radius = 1.0f;
 		else
 			cbuffer_cb2_data.radius = shared::config.radius;
+		cbuffer_cb2_data.blur = shared::config.kernel_blur;
 		cbuffer_cb2_data.kparam1 = shared::config.param1;
 		cbuffer_cb2_data.kparam2 = shared::config.param2;
 		cbuffer_cb2_data.antiringing = shared::config.antiringing;

@@ -33,6 +33,9 @@
 #define IDC_PARAM1_LABLE                1015
 #define IDC_PARAM2_LABLE                1016
 #define IDC_ANTIRINGING_LABLE           1017
+#define IDC_RADIUS2                     1018
+#define IDC_KERNEL_BLUR                 1018
+#define IDC_RADIUS_LABLE2               1019
 #define ID_OPEN_NEXT                    32771
 #define ID_OPEN_PREVIOUS                32772
 #define ID_OPEN_FULLSCREEN              32773

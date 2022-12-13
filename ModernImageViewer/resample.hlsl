@@ -11,6 +11,7 @@ cbuffer cb2 : register(b1)
 {
     int kernel_index;
     float radius; //kernel radius
+    float blur; //kernel blur
     float2 kparam; //kernel specific parameters, kparam.x == kparam1, kparam.y == kparam2
     float antiringing; //antiringing strenght
     float scale; //if downsampling, > 1.0 else == 1.0
@@ -126,7 +127,7 @@ float bessel_i0(float x)
 #define welch(x) (1.0 - x * x)
 
 //source https://www.hpl.hp.com/techreports/2007/HPL-2007-179.pdf
-#define said(x, chi, eta) (sinc(x) * cosh(sqrt(2.0 * eta) * M_PI * chi / (2.0 - eta) * x) * exp(-(M_PI * M_PI * chi * chi / ((2.0 - eta) * (2.0 - eta)) * x * x)))
+#define said(x, chi, eta) (cosh(sqrt(2.0 * eta) * M_PI * chi / (2.0 - eta) * x) * exp(-(M_PI * M_PI * chi * chi / ((2.0 - eta) * (2.0 - eta)) * x * x)))
 
 #define bc_spline(x, b, c) (x < 1.0 ? (12.0 - 9.0 * b - 6.0 * c) * x * x * x + (-18.0 + 12.0 * b + 6.0 * c) * x * x + (6.0 - 2.0 * b) : (-b - 6.0 * c) * x * x * x + (6.0 * b + 30.0 * c) * x * x + (-12.0 * b - 48.0 * c) * x + (8.0 * b + 24.0 * c))
 
@@ -139,21 +140,21 @@ float get_weight(float x)
     if (x < radius) {
         switch(kernel_index) {
         case 1:
-            return sinc(x) * sinc(x / radius);
+            return sinc(x / blur) * sinc(x / radius);
         case 2:
-            return sinc(x) * cosine(x / radius);
+            return sinc(x / blur) * cosine(x / radius);
         case 3:
-            return sinc(x) * hann(x / radius);
+            return sinc(x / blur) * hann(x / radius);
         case 4:
-            return sinc(x) * hamming(x / radius);
+            return sinc(x / blur) * hamming(x / radius);
         case 5:
-            return sinc(x) * blackman(x / radius);
+            return sinc(x / blur) * blackman(x / radius);
         case 6:
-            return sinc(x) * kaiser(x / radius, kparam.x);
+            return sinc(x / blur) * kaiser(x / radius, kparam.x);
         case 7:
-            return sinc(x) * welch(x / radius);
+            return sinc(x / blur) * welch(x / radius);
         case 8:
-            return said(x, kparam.x, kparam.y);
+            return sinc(x / blur) * said(x, kparam.x, kparam.y);
         case 9:
             return bc_spline(x, kparam.x, kparam.y);
         case 10:

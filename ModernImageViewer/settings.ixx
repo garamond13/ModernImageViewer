@@ -278,6 +278,7 @@ private:
             settings = reinterpret_cast<Settings*>(lparam);
             settings->config.kernel = shared::config.kernel;
             settings->config.radius = shared::config.radius;
+            settings->config.kernel_blur = shared::config.kernel_blur;
             settings->config.param1 = shared::config.param1;
             settings->config.param2 = shared::config.param2;
             settings->config.antiringing = shared::config.antiringing;
@@ -290,6 +291,7 @@ private:
             if (reinterpret_cast<LPNMHDR>(lparam)->code == PSN_APPLY) {
                 shared::config.kernel = settings->config.kernel;
                 shared::config.radius = settings->config.radius;
+                shared::config.kernel_blur = settings->config.kernel_blur;
                 shared::config.param1 = settings->config.param1;
                 shared::config.param2 = settings->config.param2;
                 shared::config.antiringing = settings->config.antiringing;
@@ -361,6 +363,7 @@ private:
 
         //set edit boxes
         SetDlgItemTextW(hdlg, IDC_RADIUS, (std::to_wstring(static_cast<int>(shared::config.radius))).c_str());
+        SetDlgItemTextW(hdlg, IDC_KERNEL_BLUR, (std::to_wstring(shared::config.kernel_blur)).c_str());
         SetDlgItemTextW(hdlg, IDC_PARAM1, (std::to_wstring(shared::config.param1)).c_str());
         SetDlgItemTextW(hdlg, IDC_PARAM2, (std::to_wstring(shared::config.param2)).c_str());
         SetDlgItemTextW(hdlg, IDC_ANTIRINGING, (std::to_wstring(shared::config.antiringing)).c_str());
@@ -419,6 +422,15 @@ private:
                 wchar_t buffer[buffer_size];
                 GetDlgItemTextW(hdlg, IDC_RADIUS, buffer, buffer_size);
                 config.radius = std::wcstof(buffer, nullptr);
+                is_change_made = true;
+            }
+            break;
+        case IDC_KERNEL_BLUR:
+            if (HIWORD(wparam) == EN_CHANGE) {
+                constexpr int buffer_size{ 6 };
+                wchar_t buffer[buffer_size];
+                GetDlgItemTextW(hdlg, IDC_KERNEL_BLUR, buffer, buffer_size);
+                config.kernel_blur = std::wcstof(buffer, nullptr);
                 is_change_made = true;
             }
             break;

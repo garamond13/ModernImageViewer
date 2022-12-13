@@ -77,6 +77,7 @@ public:
 		file
 			<< kernel << '\n'
 			<< radius << '\n'
+			<< kernel_blur << '\n'
 			<< param1 << '\n'
 			<< param2 << '\n'
 			<< antiringing << '\n';
@@ -104,6 +105,7 @@ public:
 		file
 			>> kernel
 			>> radius
+			>> kernel_blur
 			>> param1
 			>> param2
 			>> antiringing;
@@ -138,6 +140,7 @@ public:
 		window_height = 900;
 		kernel = Kernel::hann;
 		radius = 3.0;
+		kernel_blur = 1.0;
 	}
 
 	void write_defaults()
@@ -154,6 +157,7 @@ public:
 	std::array<COLORREF, 16> custom_colors;
 	flag_type kernel;
 	float radius;
+	float kernel_blur;
 	float param1;
 	float param2;
 	float antiringing;
