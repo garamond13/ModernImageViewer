@@ -6,6 +6,8 @@ cbuffer cb1 : register(b0)
 {
     bool use_color_managment; //use color managment
     float2 axis; //x or y axis, (1, 0) or (0, 1)
+    float blur_sigma;
+    float blur_radius;
 };
 
 struct Vertex_shader_output

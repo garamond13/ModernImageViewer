@@ -368,3 +368,4 @@ pixelShader.h
 vertexShader.h
 /ModernImageViewer/resample.h
 /ModernImageViewer/sample.h
+/ModernImageViewer/blur.h

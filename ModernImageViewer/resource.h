@@ -36,6 +36,11 @@
 #define IDC_RADIUS2                     1018
 #define IDC_KERNEL_BLUR                 1018
 #define IDC_RADIUS_LABLE2               1019
+#define IDC_BLUR_RADIUS                 1020
+#define IDC_RADIUS_LABLE3               1021
+#define IDC_KERNEL_BLUR2                1022
+#define IDC_BLUR_SIGMA                  1022
+#define IDC_RADIUS_LABLE4               1023
 #define ID_OPEN_NEXT                    32771
 #define ID_OPEN_PREVIOUS                32772
 #define ID_OPEN_FULLSCREEN              32773

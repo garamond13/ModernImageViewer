@@ -282,6 +282,8 @@ private:
             settings->config.param1 = shared::config.param1;
             settings->config.param2 = shared::config.param2;
             settings->config.antiringing = shared::config.antiringing;
+            settings->config.blur_radius = shared::config.blur_radius;
+            settings->config.blur_sigma = shared::config.blur_sigma;
             return settings->scaling_wm_initdialog(hdlg);
         case WM_COMMAND:
             PropSheet_Changed(GetParent(hdlg), hdlg); //on any command notification, enable the Apply button
@@ -295,6 +297,8 @@ private:
                 shared::config.param1 = settings->config.param1;
                 shared::config.param2 = settings->config.param2;
                 shared::config.antiringing = settings->config.antiringing;
+                shared::config.blur_radius = settings->config.blur_radius;
+                shared::config.blur_sigma = settings->config.blur_sigma;
                 shared::config.write();
                 settings->is_change_made = false; //reset value
             }
@@ -367,6 +371,8 @@ private:
         SetDlgItemTextW(hdlg, IDC_PARAM1, (std::to_wstring(shared::config.param1)).c_str());
         SetDlgItemTextW(hdlg, IDC_PARAM2, (std::to_wstring(shared::config.param2)).c_str());
         SetDlgItemTextW(hdlg, IDC_ANTIRINGING, (std::to_wstring(shared::config.antiringing)).c_str());
+        SetDlgItemTextW(hdlg, IDC_BLUR_RADIUS, (std::to_wstring(shared::config.blur_radius)).c_str());
+        SetDlgItemTextW(hdlg, IDC_BLUR_SIGMA, (std::to_wstring(shared::config.blur_sigma)).c_str());
 
         return 1;
     }
@@ -458,6 +464,24 @@ private:
                 wchar_t buffer[buffer_size];
                 GetDlgItemTextW(hdlg, IDC_ANTIRINGING, buffer, buffer_size);
                 config.antiringing = std::wcstof(buffer, nullptr);
+                is_change_made = true;
+            }
+            break;
+        case IDC_BLUR_RADIUS:
+            if (HIWORD(wparam) == EN_CHANGE) {
+                constexpr int buffer_size{ 6 };
+                wchar_t buffer[buffer_size];
+                GetDlgItemTextW(hdlg, IDC_BLUR_RADIUS, buffer, buffer_size);
+                config.blur_radius = std::wcstof(buffer, nullptr);
+                is_change_made = true;
+            }
+            break;
+        case IDC_BLUR_SIGMA:
+            if (HIWORD(wparam) == EN_CHANGE) {
+                constexpr int buffer_size{ 6 };
+                wchar_t buffer[buffer_size];
+                GetDlgItemTextW(hdlg, IDC_BLUR_SIGMA, buffer, buffer_size);
+                config.blur_sigma = std::wcstof(buffer, nullptr);
                 is_change_made = true;
             }
             break;

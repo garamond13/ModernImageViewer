@@ -80,7 +80,9 @@ public:
 			<< kernel_blur << '\n'
 			<< param1 << '\n'
 			<< param2 << '\n'
-			<< antiringing << '\n';
+			<< antiringing << '\n'
+			<< blur_radius << '\n'
+			<< blur_sigma << '\n';
 	}
 
 	void read()
@@ -108,7 +110,9 @@ public:
 			>> kernel_blur
 			>> param1
 			>> param2
-			>> antiringing;
+			>> antiringing
+			>> blur_radius
+			>> blur_sigma;
 	}
 
 	//if passed flags are already set it will unset them
@@ -141,6 +145,8 @@ public:
 		kernel = Kernel::hann;
 		radius = 3.0;
 		kernel_blur = 1.0;
+		blur_radius = 3.0;
+		blur_sigma = 1.0;
 	}
 
 	void write_defaults()
@@ -161,6 +167,8 @@ public:
 	float param1;
 	float param2;
 	float antiringing;
+	float blur_radius;
+	float blur_sigma;
 
 	private:
 		//config path: %USERPROFILE%\AppData\Local\ModernImageViever\config.dat
