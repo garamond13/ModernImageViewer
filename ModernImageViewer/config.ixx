@@ -82,7 +82,10 @@ public:
 			<< param2 << '\n'
 			<< antiringing << '\n'
 			<< blur_radius << '\n'
-			<< blur_sigma << '\n';
+			<< blur_sigma << '\n'
+			<< unsharp_radius << '\n'
+			<< unsharp_sigma << '\n'
+			<< unsharp_amount << '\n';
 	}
 
 	void read()
@@ -112,7 +115,10 @@ public:
 			>> param2
 			>> antiringing
 			>> blur_radius
-			>> blur_sigma;
+			>> blur_sigma
+			>> unsharp_radius
+			>> unsharp_sigma
+			>> unsharp_amount;
 	}
 
 	//if passed flags are already set it will unset them
@@ -147,6 +153,9 @@ public:
 		kernel_blur = 1.0;
 		blur_radius = 3.0;
 		blur_sigma = 1.0;
+		unsharp_radius = 3.0;
+		unsharp_sigma = 1.0;
+		unsharp_amount = 0.5;
 	}
 
 	void write_defaults()
@@ -169,6 +178,9 @@ public:
 	float antiringing;
 	float blur_radius;
 	float blur_sigma;
+	float unsharp_radius;
+	float unsharp_sigma;
+	float unsharp_amount;
 
 	private:
 		//config path: %USERPROFILE%\AppData\Local\ModernImageViever\config.dat

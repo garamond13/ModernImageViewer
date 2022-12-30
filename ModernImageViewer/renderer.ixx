@@ -20,6 +20,7 @@ struct alignas(16) Cbuffer_cb1_data {
 	float axis_y;
 	float blur_sigma;
 	float blur_radius;
+	float unsharp_amount;
 };
 
 struct alignas(16) Cbuffer_cb2_data {
@@ -76,6 +77,7 @@ public:
 			cbuffer_cb1_data.axis_y = 1.0;
 			cbuffer_cb1_data.blur_sigma = shared::config.blur_sigma;
 			cbuffer_cb1_data.blur_radius = shared::config.blur_radius;
+			cbuffer_cb1_data.unsharp_amount = 0.0;
 			update_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.Get(), cbuffer_cb1_data);
 
 			draw_pass(Image::width, Image::height, shader_resource_view_image.GetAddressOf(), shader_resource_view_blur_y.ReleaseAndGetAddressOf(), render_target_view_blur_y.ReleaseAndGetAddressOf(), BLUR, sizeof(BLUR));
@@ -86,6 +88,7 @@ public:
 			cbuffer_cb1_data.axis_y = 0.0;
 			cbuffer_cb1_data.blur_sigma = shared::config.blur_sigma;
 			cbuffer_cb1_data.blur_radius = shared::config.blur_radius;
+			cbuffer_cb1_data.unsharp_amount = 0.0;
 			update_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.Get(), cbuffer_cb1_data);
 
 			draw_pass(Image::width, Image::height, shader_resource_view_blur_y.GetAddressOf(), shader_resource_view_blur_x.ReleaseAndGetAddressOf(), render_target_view_blur_x.ReleaseAndGetAddressOf(), BLUR, sizeof(BLUR));
@@ -105,6 +108,29 @@ public:
 
 			draw_pass(swap_chain_desc1.Width, swap_chain_desc1.Height, shader_resource_view_resample_y.GetAddressOf(), shader_resource_view_resample_x.ReleaseAndGetAddressOf(), render_target_view_resample_x.ReleaseAndGetAddressOf(), RESAMPLE, sizeof(RESAMPLE));
 
+			//update constant buffer
+			cbuffer_cb1_data.use_color_managment = 0;
+			cbuffer_cb1_data.axis_x = 0.0;
+			cbuffer_cb1_data.axis_y = 1.0;
+			cbuffer_cb1_data.blur_sigma = shared::config.unsharp_sigma;
+			cbuffer_cb1_data.blur_radius = shared::config.unsharp_radius;
+			cbuffer_cb1_data.unsharp_amount = shared::config.unsharp_amount;
+			update_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.Get(), cbuffer_cb1_data);
+
+			draw_pass(swap_chain_desc1.Width, swap_chain_desc1.Height, shader_resource_view_resample_x.GetAddressOf(), shader_resource_view_unsharp_y.ReleaseAndGetAddressOf(), render_target_view_unsharp_y.ReleaseAndGetAddressOf(), BLUR, sizeof(BLUR));
+
+			//update constant buffer
+			cbuffer_cb1_data.use_color_managment = 0;
+			cbuffer_cb1_data.axis_x = 1.0;
+			cbuffer_cb1_data.axis_y = 0.0;
+			cbuffer_cb1_data.blur_sigma = shared::config.unsharp_sigma;
+			cbuffer_cb1_data.blur_radius = shared::config.unsharp_radius;
+			cbuffer_cb1_data.unsharp_amount = shared::config.unsharp_amount;
+			update_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.Get(), cbuffer_cb1_data);
+			device_context->PSSetShaderResources(2, 1, shader_resource_view_resample_x.GetAddressOf());
+
+			draw_pass(swap_chain_desc1.Width, swap_chain_desc1.Height, shader_resource_view_unsharp_y.GetAddressOf(), shader_resource_view_unsharp_x.ReleaseAndGetAddressOf(), render_target_view_unsharp_x.ReleaseAndGetAddressOf(), BLUR, sizeof(BLUR));
+
 			//pixel shader
 			Microsoft::WRL::ComPtr<ID3D11PixelShader> pixel_shader;
 			device->CreatePixelShader(SAMPLE, sizeof(SAMPLE), nullptr, pixel_shader.ReleaseAndGetAddressOf());
@@ -119,7 +145,7 @@ public:
 			device_context->ClearRenderTargetView(render_target_view.Get(), clear_color);
 
 			//bind resources
-			device_context->PSSetShaderResources(0, 1, shader_resource_view_resample_x.GetAddressOf());
+			device_context->PSSetShaderResources(0, 1, shader_resource_view_unsharp_x.GetAddressOf());
 			device_context->OMSetRenderTargets(1, render_target_view.GetAddressOf(), nullptr);
 
 			//update constant buffer
@@ -375,5 +401,9 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> shader_resource_view_blur_y;
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> render_target_view_blur_x;
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> shader_resource_view_blur_x;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> render_target_view_unsharp_y;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> shader_resource_view_unsharp_y;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> render_target_view_unsharp_x;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> shader_resource_view_unsharp_x;
 	DXGI_SWAP_CHAIN_DESC1 swap_chain_desc1;
 };

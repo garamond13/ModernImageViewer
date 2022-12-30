@@ -284,6 +284,9 @@ private:
             settings->config.antiringing = shared::config.antiringing;
             settings->config.blur_radius = shared::config.blur_radius;
             settings->config.blur_sigma = shared::config.blur_sigma;
+            settings->config.unsharp_radius = shared::config.unsharp_radius;
+            settings->config.unsharp_sigma = shared::config.unsharp_sigma;
+            settings->config.unsharp_amount = shared::config.unsharp_amount;
             return settings->scaling_wm_initdialog(hdlg);
         case WM_COMMAND:
             PropSheet_Changed(GetParent(hdlg), hdlg); //on any command notification, enable the Apply button
@@ -299,6 +302,9 @@ private:
                 shared::config.antiringing = settings->config.antiringing;
                 shared::config.blur_radius = settings->config.blur_radius;
                 shared::config.blur_sigma = settings->config.blur_sigma;
+                shared::config.unsharp_radius = settings->config.unsharp_radius;
+                shared::config.unsharp_sigma = settings->config.unsharp_sigma;
+                shared::config.unsharp_amount = settings->config.unsharp_amount;
                 shared::config.write();
                 settings->is_change_made = false; //reset value
             }
@@ -373,6 +379,9 @@ private:
         SetDlgItemTextW(hdlg, IDC_ANTIRINGING, (std::to_wstring(shared::config.antiringing)).c_str());
         SetDlgItemTextW(hdlg, IDC_BLUR_RADIUS, (std::to_wstring(shared::config.blur_radius)).c_str());
         SetDlgItemTextW(hdlg, IDC_BLUR_SIGMA, (std::to_wstring(shared::config.blur_sigma)).c_str());
+        SetDlgItemTextW(hdlg, IDC_UNSHARP_RADIUS, (std::to_wstring(shared::config.unsharp_radius)).c_str());
+        SetDlgItemTextW(hdlg, IDC_UNSHARP_SIGMA, (std::to_wstring(shared::config.unsharp_sigma)).c_str());
+        SetDlgItemTextW(hdlg, IDC_UNSHARP_AMOUNT, (std::to_wstring(shared::config.unsharp_amount)).c_str());
 
         return 1;
     }
@@ -482,6 +491,33 @@ private:
                 wchar_t buffer[buffer_size];
                 GetDlgItemTextW(hdlg, IDC_BLUR_SIGMA, buffer, buffer_size);
                 config.blur_sigma = std::wcstof(buffer, nullptr);
+                is_change_made = true;
+            }
+            break;
+        case IDC_UNSHARP_RADIUS:
+            if (HIWORD(wparam) == EN_CHANGE) {
+                constexpr int buffer_size{ 6 };
+                wchar_t buffer[buffer_size];
+                GetDlgItemTextW(hdlg, IDC_UNSHARP_RADIUS, buffer, buffer_size);
+                config.unsharp_radius = std::wcstof(buffer, nullptr);
+                is_change_made = true;
+            }
+            break;
+        case IDC_UNSHARP_SIGMA:
+            if (HIWORD(wparam) == EN_CHANGE) {
+                constexpr int buffer_size{ 6 };
+                wchar_t buffer[buffer_size];
+                GetDlgItemTextW(hdlg, IDC_UNSHARP_SIGMA, buffer, buffer_size);
+                config.unsharp_sigma = std::wcstof(buffer, nullptr);
+                is_change_made = true;
+            }
+            break;
+        case IDC_UNSHARP_AMOUNT:
+            if (HIWORD(wparam) == EN_CHANGE) {
+                constexpr int buffer_size{ 6 };
+                wchar_t buffer[buffer_size];
+                GetDlgItemTextW(hdlg, IDC_UNSHARP_AMOUNT, buffer, buffer_size);
+                config.unsharp_amount = std::wcstof(buffer, nullptr);
                 is_change_made = true;
             }
             break;

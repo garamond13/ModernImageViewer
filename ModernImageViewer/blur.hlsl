@@ -1,4 +1,5 @@
 Texture2D tex : register(t0);
+Texture2D tex_original : register(t2);
 SamplerState smp : register(s0);
 
 cbuffer cb1 : register(b0)
@@ -7,6 +8,7 @@ cbuffer cb1 : register(b0)
     float2 axis; //x or y axis, (1, 0) or (0, 1)
     float blur_sigma;
     float blur_radius;
+    float unsharp_amount;
 };
 
 struct Vertex_shader_output
@@ -15,10 +17,7 @@ struct Vertex_shader_output
     float2 texcoord : TEXCOORD; //uv
 };
 
-#define SIGMA 1.0
-#define RADIUS 3.0
-
-#define get_weight(x) (exp(-(x * x / (2.0 * blur_sigma * blur_sigma))))
+#define get_weight(x) (exp(-x * x / (2.0 * blur_sigma * blur_sigma)))
 
 float4 main(Vertex_shader_output vs_out) : SV_Target
 {
@@ -34,6 +33,10 @@ float4 main(Vertex_shader_output vs_out) : SV_Target
         weight = get_weight(i);
         csum += (tex.SampleLevel(smp, vs_out.texcoord + dims * -i, 0.0) + tex.SampleLevel(smp, vs_out.texcoord + dims * i, 0.0)) * weight;
         wsum += 2.0 * weight;
+    }
+    if (unsharp_amount > 0.0 && axis.x > 0.0) {
+        float4 original = tex_original.SampleLevel(smp, vs_out.texcoord, 0.0);
+        return original + (original - csum / wsum) * unsharp_amount;
     }
     return csum / wsum;
 }
