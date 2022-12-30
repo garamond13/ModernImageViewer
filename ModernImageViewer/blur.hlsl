@@ -26,9 +26,9 @@ float4 main(Vertex_shader_output vs_out) : SV_Target
     float2 dims;
     tex.GetDimensions(dims.x, dims.y);
     dims = 1.0 / dims * axis;
-    float weight = get_weight(0.0);
-    float4 csum = tex.SampleLevel(smp, vs_out.texcoord, 0.0) * weight;
-    float wsum = weight;
+    float weight;
+    float4 csum = tex.SampleLevel(smp, vs_out.texcoord, 0.0);
+    float wsum = 1.0;
     for (float i = 1.0; i <= blur_radius; ++i) {
         weight = get_weight(i);
         csum += (tex.SampleLevel(smp, vs_out.texcoord + dims * -i, 0.0) + tex.SampleLevel(smp, vs_out.texcoord + dims * i, 0.0)) * weight;
