@@ -75,17 +75,25 @@ public:
 		for (size_t i{}; i < custom_colors.size(); ++i)
 			file << custom_colors[i] << '\n';
 		file
-			<< kernel << '\n'
-			<< radius << '\n'
-			<< kernel_blur << '\n'
-			<< param1 << '\n'
-			<< param2 << '\n'
+			<< upscale_kernel << '\n'
+			<< upscale_radius << '\n'
+			<< upscale_kernel_blur << '\n'
+			<< upscale_param1 << '\n'
+			<< upscale_param2 << '\n'
 			<< antiringing << '\n'
+			<< upscale_unsharp_radius << '\n'
+			<< upscale_unsharp_sigma << '\n'
+			<< upscale_unsharp_amount << '\n'
+			<< downscale_kernel << '\n'
+			<< downscale_radius << '\n'
+			<< downscale_kernel_blur << '\n'
+			<< downscale_param1 << '\n'
+			<< downscale_param2 << '\n'
 			<< blur_radius << '\n'
 			<< blur_sigma << '\n'
-			<< unsharp_radius << '\n'
-			<< unsharp_sigma << '\n'
-			<< unsharp_amount << '\n';
+			<< downscale_unsharp_radius << '\n'
+			<< downscale_unsharp_sigma << '\n'
+			<< downscale_unsharp_amount << '\n';
 	}
 
 	void read()
@@ -108,17 +116,26 @@ public:
 		for (int i{}; i < custom_colors.size(); ++i)
 			file >> custom_colors[i];
 		file
-			>> kernel
-			>> radius
-			>> kernel_blur
-			>> param1
-			>> param2
+			>> upscale_kernel
+			>> upscale_radius
+			>> upscale_kernel_blur
+			>> upscale_param1
+			>> upscale_param2
 			>> antiringing
+			>> upscale_unsharp_radius
+			>> upscale_unsharp_sigma
+			>> upscale_unsharp_amount
+			>> downscale_kernel
+			>> downscale_radius
+			>> downscale_kernel_blur
+			>> downscale_param1
+			>> downscale_param2
 			>> blur_radius
 			>> blur_sigma
-			>> unsharp_radius
-			>> unsharp_sigma
-			>> unsharp_amount;
+			>> downscale_unsharp_radius
+			>> downscale_unsharp_sigma
+			>> downscale_unsharp_amount;
+
 	}
 
 	//if passed flags are already set it will unset them
@@ -148,14 +165,20 @@ public:
 		color_managment = Color_managment::enable | Color_managment::intent_perceptual;
 		window_width = 1200;
 		window_height = 900;
-		kernel = Kernel::hann;
-		radius = 3.0;
-		kernel_blur = 1.0;
+		upscale_kernel = Kernel::hann;
+		upscale_radius = 3.0;
+		upscale_kernel_blur = 1.0;
+		upscale_unsharp_radius = 3.0;
+		upscale_unsharp_sigma = 1.0;
+		upscale_unsharp_amount = 0.5;
+		downscale_kernel = Kernel::hann;
+		downscale_radius = 3.0;
+		downscale_kernel_blur = 1.0;
 		blur_radius = 3.0;
 		blur_sigma = 1.0;
-		unsharp_radius = 3.0;
-		unsharp_sigma = 1.0;
-		unsharp_amount = 0.5;
+		downscale_unsharp_radius = 3.0;
+		downscale_unsharp_sigma = 1.0;
+		downscale_unsharp_amount = 0.5;
 	}
 
 	void write_defaults()
@@ -170,17 +193,25 @@ public:
 	int window_height;
 	COLORREF background_color;
 	std::array<COLORREF, 16> custom_colors;
-	flag_type kernel;
-	float radius;
-	float kernel_blur;
-	float param1;
-	float param2;
+	flag_type upscale_kernel;
+	float upscale_radius;
+	float upscale_kernel_blur;
+	float upscale_param1;
+	float upscale_param2;
 	float antiringing;
+	float upscale_unsharp_radius;
+	float upscale_unsharp_sigma;
+	float upscale_unsharp_amount;
+	flag_type downscale_kernel;
+	float downscale_radius;
+	float downscale_kernel_blur;
+	float downscale_param1;
+	float downscale_param2;
 	float blur_radius;
 	float blur_sigma;
-	float unsharp_radius;
-	float unsharp_sigma;
-	float unsharp_amount;
+	float downscale_unsharp_radius;
+	float downscale_unsharp_sigma;
+	float downscale_unsharp_amount;
 
 	private:
 		//config path: %USERPROFILE%\AppData\Local\ModernImageViever\config.dat

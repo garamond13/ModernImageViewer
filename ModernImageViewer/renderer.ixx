@@ -75,8 +75,8 @@ public:
 			cbuffer_cb1_data.use_color_managment = 0;
 			cbuffer_cb1_data.axis_x = 0.0;
 			cbuffer_cb1_data.axis_y = 1.0;
-			cbuffer_cb1_data.blur_sigma = shared::config.blur_sigma;
-			cbuffer_cb1_data.blur_radius = shared::config.blur_radius;
+			cbuffer_cb1_data.blur_sigma = get_scale_factor() > 1.0 ? 0.0 : shared::config.blur_sigma;
+			cbuffer_cb1_data.blur_radius = get_scale_factor() > 1.0 ? 0.0 : shared::config.blur_radius;
 			cbuffer_cb1_data.unsharp_amount = 0.0;
 			update_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.Get(), cbuffer_cb1_data);
 
@@ -86,8 +86,8 @@ public:
 			cbuffer_cb1_data.use_color_managment = 0;
 			cbuffer_cb1_data.axis_x = 1.0;
 			cbuffer_cb1_data.axis_y = 0.0;
-			cbuffer_cb1_data.blur_sigma = shared::config.blur_sigma;
-			cbuffer_cb1_data.blur_radius = shared::config.blur_radius;
+			cbuffer_cb1_data.blur_sigma = get_scale_factor() > 1.0 ? 0.0 : shared::config.blur_sigma;
+			cbuffer_cb1_data.blur_radius = get_scale_factor() > 1.0 ? 0.0 : shared::config.blur_radius;
 			cbuffer_cb1_data.unsharp_amount = 0.0;
 			update_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.Get(), cbuffer_cb1_data);
 
@@ -112,9 +112,9 @@ public:
 			cbuffer_cb1_data.use_color_managment = 0;
 			cbuffer_cb1_data.axis_x = 0.0;
 			cbuffer_cb1_data.axis_y = 1.0;
-			cbuffer_cb1_data.blur_sigma = shared::config.unsharp_sigma;
-			cbuffer_cb1_data.blur_radius = shared::config.unsharp_radius;
-			cbuffer_cb1_data.unsharp_amount = shared::config.unsharp_amount;
+			cbuffer_cb1_data.blur_sigma = get_scale_factor() > 1.0 ? shared::config.upscale_unsharp_sigma : shared::config.downscale_unsharp_sigma;
+			cbuffer_cb1_data.blur_radius = get_scale_factor() > 1.0 ? shared::config.upscale_unsharp_radius : shared::config.downscale_unsharp_radius;
+			cbuffer_cb1_data.unsharp_amount = get_scale_factor() > 1.0 ? shared::config.upscale_unsharp_amount : shared::config.downscale_unsharp_amount;
 			update_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.Get(), cbuffer_cb1_data);
 
 			draw_pass(swap_chain_desc1.Width, swap_chain_desc1.Height, shader_resource_view_resample_x.GetAddressOf(), shader_resource_view_unsharp_y.ReleaseAndGetAddressOf(), render_target_view_unsharp_y.ReleaseAndGetAddressOf(), BLUR, sizeof(BLUR));
@@ -123,9 +123,9 @@ public:
 			cbuffer_cb1_data.use_color_managment = 0;
 			cbuffer_cb1_data.axis_x = 1.0;
 			cbuffer_cb1_data.axis_y = 0.0;
-			cbuffer_cb1_data.blur_sigma = shared::config.unsharp_sigma;
-			cbuffer_cb1_data.blur_radius = shared::config.unsharp_radius;
-			cbuffer_cb1_data.unsharp_amount = shared::config.unsharp_amount;
+			cbuffer_cb1_data.blur_sigma = get_scale_factor() > 1.0 ? shared::config.upscale_unsharp_sigma : shared::config.downscale_unsharp_sigma;
+			cbuffer_cb1_data.blur_radius = get_scale_factor() > 1.0 ? shared::config.upscale_unsharp_radius : shared::config.downscale_unsharp_radius;
+			cbuffer_cb1_data.unsharp_amount = get_scale_factor() > 1.0 ? shared::config.upscale_unsharp_amount : shared::config.downscale_unsharp_amount;
 			update_constant_buffer<Cbuffer_cb1_data>(cbuffer_cb1.Get(), cbuffer_cb1_data);
 			device_context->PSSetShaderResources(2, 1, shader_resource_view_resample_x.GetAddressOf());
 
@@ -332,16 +332,16 @@ private:
 	void update_scaling()
 	{
 		auto scale_factor{ get_scale_factor() };
-		cbuffer_cb2_data.kernel_index = scale_factor == 1.0f ? 0 : shared::config.kernel;
-		if(shared::config.kernel == Config::Kernel::bc_spline || shared::config.kernel == Config::Kernel::bicubic)
+		cbuffer_cb2_data.kernel_index = scale_factor == 1.0f ? 0 : scale_factor < 1.0 ? shared::config.downscale_kernel : shared::config.upscale_kernel;
+		if(shared::config.downscale_kernel == Config::Kernel::bc_spline || shared::config.downscale_kernel == Config::Kernel::bicubic)
 			cbuffer_cb2_data.radius = 2.0f;
-		else if(shared::config.kernel == Config::Kernel::nearest_neighbor)
+		else if(shared::config.downscale_kernel == Config::Kernel::nearest_neighbor)
 			cbuffer_cb2_data.radius = 1.0f;
 		else
-			cbuffer_cb2_data.radius = shared::config.radius;
-		cbuffer_cb2_data.blur = shared::config.kernel_blur;
-		cbuffer_cb2_data.kparam1 = shared::config.param1;
-		cbuffer_cb2_data.kparam2 = shared::config.param2;
+			cbuffer_cb2_data.radius = scale_factor < 1.0 ? shared::config.downscale_radius : shared::config.upscale_radius;
+		cbuffer_cb2_data.blur = scale_factor < 1.0 ? shared::config.downscale_kernel_blur : shared::config.upscale_kernel_blur;
+		cbuffer_cb2_data.kparam1 = scale_factor < 1.0 ? shared::config.downscale_param1 : shared::config.downscale_param1;
+		cbuffer_cb2_data.kparam2 = scale_factor < 1.0 ? shared::config.downscale_param2 : shared::config.downscale_param2;
 		cbuffer_cb2_data.antiringing = shared::config.antiringing;
 		cbuffer_cb2_data.widening_factor = scale_factor < 1.0f ? 1.0f / scale_factor : 1.0f;
 		update_constant_buffer<Cbuffer_cb2_data>(cbuffer_cb2.Get(), cbuffer_cb2_data);
